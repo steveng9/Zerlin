@@ -41,7 +41,7 @@ class SceneManager2 {
     this.camera = new Camera(this, 0, 0, this.game.ctx.canvas.width, this.game.ctx.canvas.height);
     this.checkPoint = new CheckPoint(this.game, 0, 0);
     this.sceneEntities = [];
-    this.godMode = true;
+    this.infiniteHealth = true;
     this.Zerlin = new Zerlin(this.game, this.camera, this);
     this.boss = null;
     this.collisionManager = new CollisionManager(this.game, this);
@@ -769,7 +769,7 @@ class SceneManager2 {
     this.cameraShakeTimer = 0;
     this.cameraShakeIntensity = 0;
     this.trainingPrevHealth = this.Zerlin.currentHealth;
-    if (this.trainingTargetDroids === undefined) this.trainingTargetDroids = 5;
+    if (this.trainingTargetDroids === undefined) this.trainingTargetDroids = smc.TRAINING_DEFAULT_DROIDS;
 
     // Store original laser speeds once
     if (!this.trainingOrigLaserSpeeds) {
@@ -782,7 +782,7 @@ class SceneManager2 {
       };
     }
     // Apply current slider multiplier
-    if (this.trainingLaserMult === undefined) this.trainingLaserMult = 1.0;
+    if (this.trainingLaserMult === undefined) this.trainingLaserMult = smc.TRAINING_DEFAULT_LASER_MULT;
     this.setTrainingLaserSpeed(this.trainingLaserMult);
 
     this.initiallyPaused = false;
@@ -991,13 +991,13 @@ class SceneManager2 {
 
   }
 
-  toggleGodMode() {
-    if (this.godMode) {
-      this.godMode = false;
-      this.Zerlin.godMode = false;
+  toggleInfiniteHealth() {
+    if (this.infiniteHealth) {
+      this.infiniteHealth = false;
+      this.Zerlin.infiniteHealth = false;
     } else {
-      this.godMode = true;
-      this.Zerlin.godMode = true;
+      this.infiniteHealth = true;
+      this.Zerlin.infiniteHealth = true;
     }
     this.Zerlin.setHealth();
   }

@@ -14,14 +14,14 @@ class Zerlin extends Entity {
     // NOTE: this.x is CENTER of Zerlin, not left side of image. this.y is feet.
     super(game, game.surfaceWidth * camConst.ZERLIN_POSITION_ON_SCREEN + zc.Z_SPAWN_X, 0, 0, 0);
     this.sceneManager = sceneManager;
-    this.godMode = this.sceneManager.godMode;
+    this.infiniteHealth = this.sceneManager.infiniteHealth;
     this.assetManager = game.assetManager;
     this.camera = camera;
     this.ctx = game.ctx;
     this.createAnimations();
     this.reset();
-    this.maxHealth = this.godMode ? 999999: zc.Z_MAX_HEALTH;
-    this.maxForce = this.godMode ? 999999: zc.Z_MAX_FORCE;
+    this.maxHealth = this.infiniteHealth ? 999999 : zc.Z_MAX_HEALTH;
+    this.maxForce = zc.Z_MAX_FORCE;
 
     /* Fields tracked by the status bar */
   }
@@ -63,16 +63,16 @@ class Zerlin extends Entity {
   }
 
   setHealth() {
-    this.maxHealth = this.godMode ? 999999: this.maxHealth;
+    this.maxHealth = this.infiniteHealth ? 999999 : zc.Z_MAX_HEALTH;
     this.currentHealth = this.maxHealth;
-    this.maxForce = this.godMode ? 999999: this.maxForce;
+    this.maxForce = zc.Z_MAX_FORCE;
     this.currentForce = this.maxForce;
   }
 
   update() {
     // check basic movement
     if (this.alive) {
-      if(this.godMode) {
+      if(this.infiniteHealth) {
         if (this.y >= 700) {
           this.deltaY -= 120;
         }

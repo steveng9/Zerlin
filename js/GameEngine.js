@@ -43,13 +43,13 @@ class GameEngine {
     this.startInput();
     this.sceneManager.init();
 
-    var godModeButton = document.getElementById("godMode");
-    godModeButton.addEventListener('click', () => {
-      this.sceneManager.toggleGodMode();
-      var on = this.sceneManager.godMode;
-      godModeButton.value = on ? "God Mode: ON" : "God Mode: OFF";
-      godModeButton.style.background = on ? "#cc3300" : "";
-      godModeButton.style.color = on ? "#ffffff" : "";
+    var infiniteHealthButton = document.getElementById("infiniteHealth");
+    infiniteHealthButton.addEventListener('click', () => {
+      this.sceneManager.toggleInfiniteHealth();
+      var on = this.sceneManager.infiniteHealth;
+      infiniteHealthButton.value = on ? "Infinite Health: ON" : "Infinite Health: OFF";
+      infiniteHealthButton.style.background = on ? "#cc3300" : "";
+      infiniteHealthButton.style.color = on ? "#ffffff" : "";
     });
 
     var trainingGroundButton = document.getElementById("trainingGroundButton");
@@ -85,6 +85,12 @@ class GameEngine {
         }
       });
     });
+    // Sync slider UI to the initial SceneManager state (driven by constants)
+    laserSlider.value = this.sceneManager.trainingLaserMult;
+    document.getElementById("laserSpeedVal").textContent = this.sceneManager.trainingLaserMult.toFixed(1) + "\u00d7";
+    droidSlider.value = this.sceneManager.trainingTargetDroids;
+    document.getElementById("droidCountVal").textContent = this.sceneManager.trainingTargetDroids;
+
     console.log('game initialized');
   }
 

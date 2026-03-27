@@ -73,8 +73,8 @@ class MusicMenu {
     this.xFx = images[2];
 
     this.ctx = this.gameEngine.ctx //not needed
-    this.xMusicChecked = false;
-    this.xFxChecked = false;
+    this.xMusicChecked = true;  // music off by default; one click to enable
+    this.xFxChecked = false;    // SFX on by default
 
   }
 

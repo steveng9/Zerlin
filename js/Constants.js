@@ -276,7 +276,10 @@ Michael Josten`,
     PAUSE_TIME_AFTER_START_LEVEL: 1.2,
     CREDITS_MESSAGE_1_TIME: 9,
 
-    GAME_FONT: 'VT323'
+    GAME_FONT: 'VT323',
+
+    TRAINING_DEFAULT_DROIDS: 3,
+    TRAINING_DEFAULT_LASER_MULT: 1.6
   },
 
   CollisionManagerConstants: {
@@ -525,11 +528,11 @@ Michael Josten`,
       'd s b f n m d s ',   // droids — open sky
       ' n m d s f b n m',   // droids
       '        H       ',   // health powerup, open air above tier 3
-      '    --      --  ',   // tier 3 — two tiny platforms (very sparse)
+      '     -      --  ',   // tier 3 — two tiny platforms (very sparse)
       ' d  n F m   b   ',   // droids + force powerup between tiers 3 & 2
-      '  -----   ---   ',   // tier 2 — two short platforms (sparse)
+      '  ---     --    ',   // tier 2 — two short platforms (sparse)
       ' d  s  f  n  m  ',   // droids between tiers 2 & 1
-      ' -------  ----- ',   // tier 1 — two medium platforms
+      ' -     -     -- ',   // tier 1 — two medium platforms
       ' m b n s d f m b',   // droids above floor
       ' -------------- '    // floor — full coverage
     ]
