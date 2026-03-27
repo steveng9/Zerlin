@@ -627,6 +627,7 @@ class CollisionManager {
     laser.isDeflected = true;
 
     var zerlin = this.sceneManager.Zerlin;
+    zerlin.lightsaber.bounceOffset = Constants.ZerlinConstants.SABER_BOUNCE_ANGLE * (Math.random() < 0.5 ? 1 : -1);
     laser.angle = 2 * zerlin.lightsaber.getSaberAngle() - laser.angle;
     laser.deltaX = Math.cos(laser.angle) * laser.speed + zerlin.deltaX;
     laser.deltaY = Math.sin(laser.angle) * laser.speed + zerlin.deltaY;
@@ -646,6 +647,7 @@ class CollisionManager {
     laser.isDeflected = true;
 
     var zerlin = this.sceneManager.Zerlin;
+    zerlin.lightsaber.bounceOffset = Constants.ZerlinConstants.SABER_BOUNCE_ANGLE * (Math.random() < 0.5 ? 1 : -1);
     var coreAngle = 2 * zerlin.lightsaber.getSaberAngle() - laser.angle;
     var newLaser = new HomingLaser(this.game, laser.x, laser.y, laser.speed, coreAngle, laser.length, laser.width, laser.color, laser.deflectedColor);
     newLaser.isDeflected = true;
@@ -657,6 +659,7 @@ class CollisionManager {
     laser.isDeflected = true;
 
     var zerlin = this.sceneManager.Zerlin;
+    zerlin.lightsaber.bounceOffset = Constants.ZerlinConstants.SABER_BOUNCE_ANGLE * (Math.random() < 0.5 ? 1 : -1);
     var coreAngle = 2 * zerlin.lightsaber.getSaberAngle() - laser.angle;
 
     var individualAngle = coreAngle - puc.SPLIT_LASER_ARC_WIDTH / 2;
@@ -673,6 +676,7 @@ class CollisionManager {
     laser.isDeflected = true;
 
     var zerlin = this.sceneManager.Zerlin;
+    zerlin.lightsaber.bounceOffset = Constants.ZerlinConstants.SABER_BOUNCE_ANGLE * (Math.random() < 0.5 ? 1 : -1);
     var coreAngle = 2 * zerlin.lightsaber.getSaberAngle() - laser.angle;
 
     var individualAngle = coreAngle - puc.SPLIT_LASER_ARC_WIDTH / 2;

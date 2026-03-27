@@ -684,6 +684,7 @@ class Lightsaber extends Entity {
     this.homingLasers = false;
     this.lightning = [];
     this.orb = null;
+    this.bounceOffset = 0;
     this.setUpSaberImages();
     this.faceRightUpSaber();
     this.updateCollisionLine();
@@ -714,6 +715,15 @@ class Lightsaber extends Entity {
     // rotate
     if (this.game.mouse) {
       this.angle = Math.atan2(this.game.mouse.y - this.y, this.game.mouse.x + this.camera.x - this.x);
+      // decay saber bounce offset back to zero
+      if (this.bounceOffset !== 0) {
+        var decay = Constants.ZerlinConstants.SABER_BOUNCE_DECAY_RATE * this.game.clockTick;
+        if (Math.abs(this.bounceOffset) <= decay) {
+          this.bounceOffset = 0;
+        } else {
+          this.bounceOffset -= Math.sign(this.bounceOffset) * decay;
+        }
+      }
         //  handle attacks
         if (this.game.keys['leftClick'] && this.game.keys['ShiftLeft']) {
           if (this.orb === null) {
@@ -857,7 +867,7 @@ class Lightsaber extends Entity {
     if (!this.hidden) {
       this.ctx.save();
       this.ctx.translate(this.x - this.camera.x, this.y);
-      this.ctx.rotate(this.angle);
+      this.ctx.rotate(this.angle + this.bounceOffset);
       this.ctx.drawImage(this.image,
         0,
         0,

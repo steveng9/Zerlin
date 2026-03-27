@@ -41,6 +41,7 @@ class SceneManager2 {
     this.camera = new Camera(this, 0, 0, this.game.ctx.canvas.width, this.game.ctx.canvas.height);
     this.checkPoint = new CheckPoint(this.game, 0, 0);
     this.sceneEntities = [];
+    this.godMode = true;
     this.Zerlin = new Zerlin(this.game, this.camera, this);
     this.boss = null;
     this.collisionManager = new CollisionManager(this.game, this);
@@ -54,17 +55,12 @@ class SceneManager2 {
       this.game.assetManager.getAsset('img/music_menu_xmusic.png'),
       this.game.assetManager.getAsset('img/music_menu_xfx.png')
     ]);
-    this.godMode = false;
   }
 
   init() {
     this.buildLevels();
     document.getElementById("formOverlay").style.display = "none";
-    this.startOpeningScene();
-    /* skip intro stuff and go strait to the level */
-    // this.startLevelScene();
-    // this.startCollectionScene();
-    // document.getElementById("formOverlay").style.display = "none"; // hide login if not hid in css (curently is)
+    this.startTrainingGroundScene();
   }
 
   buildLevels() {
@@ -148,6 +144,13 @@ class SceneManager2 {
     this.levels.push(new Level(this.game, this, lvlConst.MIKE_LEVEL_ONE, LEVEL_ONE_BACKGROUNDS, LEVEL_ONE_TILES));
     this.levels.push(new Level(this.game, this, lvlConst.CITY_LEVEL, CITY_LEVEL_BACKGROUNDS, CITY_LEVEL_TILES));
     this.levels.push(new Level(this.game, this, lvlConst.MIKE_LEVEL_THREE, LEVEL_THREE_BACKGROUNDS, LEVEL_THREE_TILES));
+    this.trainingBgIndex = 0;
+    this.trainingLevels = [
+      new Level(this.game, this, lvlConst.TRAINING_GROUND_LAYOUT, LEVEL_ONE_BACKGROUNDS, LEVEL_ONE_TILES),
+      new Level(this.game, this, lvlConst.TRAINING_GROUND_LAYOUT, CITY_LEVEL_BACKGROUNDS, CITY_LEVEL_TILES),
+      new Level(this.game, this, lvlConst.TRAINING_GROUND_LAYOUT, LEVEL_THREE_BACKGROUNDS, LEVEL_THREE_TILES)
+    ];
+    this.trainingLevel = this.trainingLevels[0];
   }
 
   setCheckPoint(checkPoint) {
@@ -212,6 +215,8 @@ class SceneManager2 {
 
   //________________________________________________________
   startOpeningScene() {
+    this.restoreOriginalLaserSpeeds();
+    document.getElementById("trainingControls").style.display = "none";
     // empty this.sceneEntities array
     // load sceneEntities for openeing scene animation
     this.sequence = 1;
@@ -431,6 +436,8 @@ class SceneManager2 {
 
   //________________________________________________________
   startLevelScene() {
+    this.restoreOriginalLaserSpeeds();
+    document.getElementById("trainingControls").style.display = "none";
     // empty this.sceneEntities array
     this.levelSceneTimer = 0;
     this.update = this.levelUpdate;
@@ -723,6 +730,260 @@ class SceneManager2 {
 		}
 	}
 
+
+  //________________________________________________________
+  startTrainingGroundScene() {
+    this.game.audio.campFire.stop();
+    this.game.audio.endAllSoundFX();
+    this.levelSceneTimer = 0;
+    this.update = this.trainingGroundUpdate;
+    this.draw = this.trainingGroundDraw;
+    this.camera.x = 0;
+    this.camera.y = 0;
+
+    this.level = this.trainingLevel;
+    this.checkPoint = new CheckPoint(this.game, this.camera.width * cc.ZERLIN_POSITION_ON_SCREEN, 0);
+    this.droids = [];
+    this.lasers = [];
+    this.powerups = [];
+    this.otherEntities = [];
+    this.activePowerups = [];
+    this.boss = null;
+    this.bossMusicSwitched = false;
+    this.bossHealthBar = null;
+    this.level.set();
+
+    // Drain all droids from level into our controlled pool; powerups spawn normally
+    this.trainingDroidPool = this.level.unspawnedDroids.slice();
+    this.level.unspawnedDroids = [];
+
+    this.addEntity(new HealthStatusBar(this.game, this, 25, 25));
+    this.addEntity(new ForceStatusBar(this.game, this, 50, 50));
+    this.Zerlin.maxHealth = 15;
+    this.Zerlin.maxForce = 15;
+    this.Zerlin.reset();
+
+    this.trainingKills = 0;
+    this.trainingSpawnTimer = 0;
+    this.cameraShakeTimer = 0;
+    this.cameraShakeIntensity = 0;
+    this.trainingPrevHealth = this.Zerlin.currentHealth;
+    if (this.trainingTargetDroids === undefined) this.trainingTargetDroids = 5;
+
+    // Store original laser speeds once
+    if (!this.trainingOrigLaserSpeeds) {
+      this.trainingOrigLaserSpeeds = {
+        basic:     Constants.DroidBasicConstants.BASIC_DROID_LASER_SPEED,
+        leggy:     Constants.DroidBasicConstants.LEGGY_DROID_LASER_SPEED,
+        slowburst: Constants.DroidBasicConstants.SLOWBURST_DROID_LASER_SPEED,
+        fastburst: Constants.DroidBasicConstants.FASTBURST_DROID_LASER_SPEED,
+        sniper:    Constants.DroidBasicConstants.SNIPER_DROID_LASER_SPEED
+      };
+    }
+    // Apply current slider multiplier
+    if (this.trainingLaserMult === undefined) this.trainingLaserMult = 1.0;
+    this.setTrainingLaserSpeed(this.trainingLaserMult);
+
+    this.initiallyPaused = false;
+    this.canPause = false;
+    this.sceneEntities = [];
+    if (this.trainingBgIndex === 2) { // Hoth — add falling snow
+      this.sceneEntities.push(new ParallaxSnowBackground(this.game, this, 300));
+      this.sceneEntities.push(new ParallaxSnowBackground(this.game, this, 200));
+      this.sceneEntities.push(new ParallaxSnowBackground(this.game, this, 100));
+    }
+    this.startedFinalOverlay = false;
+    this.startNewScene = false;
+
+    document.getElementById("trainingControls").style.display = "block";
+
+    this.game.audio.playSoundFx(this.game.audio.lightsaber, 'lightsaberOn');
+    this.game.audio.playSoundFx(this.game.audio.saberHum);
+  }
+
+  trainingGroundUpdate() {
+    this.levelSceneTimer += this.game.clockTick;
+    this.musicMenu.update();
+
+    if (!this.paused) {
+      this.Zerlin.update();
+      this.camera.update();
+      // Call level.update() for tile physics and powerup spawning; droids managed by pool
+      this.level.update();
+
+      // Staggered droid spawning — refill pool silently when exhausted
+      if (this.trainingDroidPool.length === 0) {
+        this.level.set();
+        this.trainingDroidPool = this.level.unspawnedDroids.slice();
+        this.level.unspawnedDroids = [];
+      }
+      this.trainingSpawnTimer -= this.game.clockTick;
+      if (this.trainingSpawnTimer <= 0
+          && this.droids.length < this.trainingTargetDroids
+          && this.trainingDroidPool.length > 0) {
+        this.trainingSpawnTimer = 0.5;
+        this.droids.push(this.trainingDroidPool.pop());
+      }
+
+      for (var i = this.droids.length - 1; i >= 0; i--) {
+        this.droids[i].update();
+        if (this.droids[i].removeFromWorld) {
+          this.trainingKills++;
+          this.droids.splice(i, 1);
+        }
+      }
+      for (var i = this.lasers.length - 1; i >= 0; i--) {
+        this.lasers[i].update();
+        if (this.lasers[i].removeFromWorld) {
+          this.lasers.splice(i, 1);
+        }
+      }
+      for (var i = this.powerups.length - 1; i >= 0; i--) {
+        this.powerups[i].update();
+        if (this.powerups[i].removeFromWorld) {
+          this.powerups.splice(i, 1);
+        }
+      }
+      for (var i = this.activePowerups.length - 1; i >= 0; i--) {
+        this.activePowerups[i].update(i);
+        if (this.activePowerups[i].removeFromWorld) {
+          this.activePowerups.splice(i, 1);
+        }
+      }
+      for (var i = this.otherEntities.length - 1; i >= 0; i--) {
+        this.otherEntities[i].update();
+        if (this.otherEntities[i].removeFromWorld) {
+          this.otherEntities.splice(i, 1);
+        }
+      }
+
+      this.collisionManager.handleCollisions();
+
+      // Camera shake on hit
+      var zc = Constants.ZerlinConstants;
+      if (this.Zerlin.currentHealth < this.trainingPrevHealth) {
+        this.cameraShakeTimer = zc.HIT_SHAKE_DURATION;
+        this.cameraShakeIntensity = zc.HIT_SHAKE_INTENSITY;
+      }
+      this.trainingPrevHealth = this.Zerlin.currentHealth;
+      if (this.cameraShakeTimer > 0) {
+        this.cameraShakeTimer -= this.game.clockTick;
+        if (this.cameraShakeTimer < 0) this.cameraShakeTimer = 0;
+      }
+
+      for (let i = this.sceneEntities.length - 1; i >= 0; i--) {
+        this.sceneEntities[i].update();
+        if (this.sceneEntities[i].removeFromWorld) {
+          this.sceneEntities.splice(i, 1);
+        }
+      }
+    }
+
+    if (!this.initiallyPaused && this.levelSceneTimer > smc.PAUSE_TIME_AFTER_START_LEVEL) {
+      this.initiallyPaused = true;
+      this.canPause = true;
+    }
+
+    // On death: show game over then restart training ground
+    if (!this.startedFinalOverlay && !this.Zerlin.alive) {
+      this.canPause = false;
+      if (this.levelSceneTimer > this.Zerlin.timeOfDeath + this.Zerlin.deathAnimation.totalTime) {
+        this.startedFinalOverlay = true;
+        this.sceneEntities.push(new Overlay(this.game, false, smc.LEVEL_TRANSITION_OVERLAY_TIME));
+        this.sceneEntities.push(new GameOverTextScreen(this.game));
+        this.stopLevelTime = this.levelSceneTimer + 6;
+        this.startNewScene = true;
+      }
+    }
+
+    if ((this.levelSceneTimer > this.stopLevelTime && this.startNewScene)
+     || (!this.Zerlin.alive && this.game.keys['Enter'])) {
+      this.game.audio.endAllSoundFX();
+      this.startTrainingGroundScene();
+      this.startNewScene = false;
+    }
+  }
+
+  trainingGroundDraw() {
+    // Apply camera shake offset if active
+    var shakeX = 0, shakeY = 0;
+    if (this.cameraShakeTimer > 0) {
+      var zc = Constants.ZerlinConstants;
+      var ratio = this.cameraShakeTimer / zc.HIT_SHAKE_DURATION;
+      var magnitude = this.cameraShakeIntensity * ratio;
+      shakeX = (Math.random() * 2 - 1) * magnitude;
+      shakeY = (Math.random() * 2 - 1) * magnitude;
+      this.game.ctx.save();
+      this.game.ctx.translate(shakeX, shakeY);
+    }
+
+    this.camera.draw();
+    this.level.draw();
+    this.Zerlin.draw();
+    for (var i = 0; i < this.droids.length; i++) {
+      this.droids[i].draw(this.ctx);
+    }
+    for (var i = 0; i < this.lasers.length; i++) {
+      this.lasers[i].draw(this.ctx);
+    }
+    for (var i = 0; i < this.powerups.length; i++) {
+      this.powerups[i].draw(this.ctx);
+    }
+    for (var i = 0; i < this.activePowerups.length; i++) {
+      this.activePowerups[i].draw();
+    }
+    for (var i = 0; i < this.otherEntities.length; i++) {
+      this.otherEntities[i].draw(this.ctx);
+    }
+    for (let i = 0; i < this.sceneEntities.length; i++) {
+      this.sceneEntities[i].draw();
+    }
+    if (this.paused) {
+      this.pauseScreen.draw();
+    }
+    this.musicMenu.draw();
+
+    // Restore from camera shake (HUD drawn at fixed position)
+    if (this.cameraShakeTimer > 0) {
+      this.game.ctx.restore();
+    }
+
+    // Training HUD
+    this.game.ctx.textAlign = "left";
+    this.game.ctx.font = '22px ' + smc.GAME_FONT;
+    this.game.ctx.fillStyle = "rgba(255, 220, 0, 0.9)";
+    this.game.ctx.fillText(
+      "TRAINING GROUND  |  Kills: " + this.trainingKills +
+      "  |  Active: " + this.droids.length,
+      25, 680);
+  }
+
+  setTrainingLaserSpeed(mult) {
+    this.trainingLaserMult = mult;
+    if (!this.trainingOrigLaserSpeeds) return;
+    var o = this.trainingOrigLaserSpeeds;
+    Constants.DroidBasicConstants.BASIC_DROID_LASER_SPEED     = Math.round(o.basic     * mult);
+    Constants.DroidBasicConstants.LEGGY_DROID_LASER_SPEED      = Math.round(o.leggy     * mult);
+    Constants.DroidBasicConstants.SLOWBURST_DROID_LASER_SPEED  = Math.round(o.slowburst * mult);
+    Constants.DroidBasicConstants.FASTBURST_DROID_LASER_SPEED  = Math.round(o.fastburst * mult);
+    Constants.DroidBasicConstants.SNIPER_DROID_LASER_SPEED     = Math.round(o.sniper    * mult);
+  }
+
+  restoreOriginalLaserSpeeds() {
+    if (!this.trainingOrigLaserSpeeds) return;
+    var o = this.trainingOrigLaserSpeeds;
+    Constants.DroidBasicConstants.BASIC_DROID_LASER_SPEED     = o.basic;
+    Constants.DroidBasicConstants.LEGGY_DROID_LASER_SPEED      = o.leggy;
+    Constants.DroidBasicConstants.SLOWBURST_DROID_LASER_SPEED  = o.slowburst;
+    Constants.DroidBasicConstants.FASTBURST_DROID_LASER_SPEED  = o.fastburst;
+    Constants.DroidBasicConstants.SNIPER_DROID_LASER_SPEED     = o.sniper;
+  }
+
+  setTrainingBackground(index) {
+    this.trainingBgIndex = index;
+    this.trainingLevel = this.trainingLevels[index];
+    this.startTrainingGroundScene();
+  }
 
   //________________________________________________________
   saveProgress() {

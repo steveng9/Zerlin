@@ -154,6 +154,12 @@ Constants = {
     JUMP_DELTA_Y: -600,
     GRAVITATIONAL_ACCELERATION: 1000,
 
+    /* Hit-reaction & saber-bounce tuning */
+    HIT_SHAKE_INTENSITY: 6,       // px — max camera displacement per hit
+    HIT_SHAKE_DURATION: 0.25,     // seconds the shake lasts (decays linearly)
+    SABER_BOUNCE_ANGLE: Math.PI / 8,   // radians — max saber kick per deflect (~22.5°)
+    SABER_BOUNCE_DECAY_RATE: 10,       // radians/sec — how fast saber snaps back to aim
+
     SABER_GLOW_RADIUS: 13,
     LS_UP_IMAGE_WIDTH: 126,
     LS_UP_IMAGE_HEIGHT: 228,
@@ -513,6 +519,19 @@ Michael Josten`,
       '---              ',
       '  ===========    ',
       '-----------------'
+    ],
+
+    TRAINING_GROUND_LAYOUT: [
+      'd s b f n m d s ',
+      ' n m d s f b n m',
+      'f b s n H d f b ',
+      ' -------        ',
+      ' s n f m b d s n',
+      'n m b f s F n m ',
+      '  -----  -----  ',
+      'd f n s m b d f ',
+      ' m b s n d f m b',
+      ' -------------- '
     ]
 
   },

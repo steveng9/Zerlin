@@ -93,5 +93,19 @@ body h2 {
   font-family: 'VT323', monospace;
   float: right;
   padding-top: 20px;
+}
 
+.training-knob {
+  color: #dddddd;
+  font-size: 15px;
+}
+
+.training-knob input[type="range"] {
+  width: 180px;
+  cursor: pointer;
+}
+
+.bg-radio {
+  margin-right: 8px;
+  cursor: pointer;
 }

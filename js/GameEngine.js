@@ -44,8 +44,46 @@ class GameEngine {
     this.sceneManager.init();
 
     var godModeButton = document.getElementById("godMode");
-    godModeButton.addEventListener('click', event => {
+    godModeButton.addEventListener('click', () => {
       this.sceneManager.toggleGodMode();
+      var on = this.sceneManager.godMode;
+      godModeButton.value = on ? "God Mode: ON" : "God Mode: OFF";
+      godModeButton.style.background = on ? "#cc3300" : "";
+      godModeButton.style.color = on ? "#ffffff" : "";
+    });
+
+    var trainingGroundButton = document.getElementById("trainingGroundButton");
+    trainingGroundButton.addEventListener('click', () => {
+      this.sceneManager.startTrainingGroundScene();
+    });
+
+    var campaignButton = document.getElementById("campaignButton");
+    campaignButton.addEventListener('click', () => {
+      this.sceneManager.levelNumber = 1;
+      this.sceneManager.newLevel = true;
+      this.sceneManager.startOpeningScene();
+    });
+
+    var laserSlider = document.getElementById("laserSpeedSlider");
+    laserSlider.addEventListener('input', () => {
+      var mult = parseFloat(laserSlider.value);
+      document.getElementById("laserSpeedVal").textContent = mult.toFixed(1) + "\u00d7";
+      this.sceneManager.setTrainingLaserSpeed(mult);
+    });
+
+    var droidSlider = document.getElementById("droidCountSlider");
+    droidSlider.addEventListener('input', () => {
+      var count = parseInt(droidSlider.value);
+      document.getElementById("droidCountVal").textContent = count;
+      this.sceneManager.trainingTargetDroids = count;
+    });
+
+    document.querySelectorAll('input[name="trainingBg"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        if (radio.checked) {
+          this.sceneManager.setTrainingBackground(parseInt(radio.value));
+        }
+      });
     });
     console.log('game initialized');
   }
