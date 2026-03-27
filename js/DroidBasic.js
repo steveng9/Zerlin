@@ -248,6 +248,9 @@ class SniperDroid extends BasicDroid {
   constructor(game, spritesheet, startX, startY, frames, frameSpeed) {
     super(game, spritesheet, startX, startY, frames, frameSpeed, 160, 160, .5, 65);
     this.shootInterval = dbc.SNIPER_DROID_SHOOT_INTERVAL;
+    // randomize the initial shot delay so multiple snipers don't fire in sync
+    this.secondsBeforeFire = dbc.SNIPER_DROID_SHOOT_INTERVAL_MIN +
+      Math.random() * (dbc.SNIPER_DROID_SHOOT_INTERVAL_MAX - dbc.SNIPER_DROID_SHOOT_INTERVAL_MIN);
   }
 
   shoot() {
@@ -259,6 +262,9 @@ class SniperDroid extends BasicDroid {
     this.sceneManager.addLaser(laser);
     this.game.audio.playSoundFx(this.game.audio.enemy, 'bowcasterShoot');
     this.fire = false;
+    // override the fixed-interval reset with a random next delay
+    this.secondsBeforeFire = dbc.SNIPER_DROID_SHOOT_INTERVAL_MIN +
+      Math.random() * (dbc.SNIPER_DROID_SHOOT_INTERVAL_MAX - dbc.SNIPER_DROID_SHOOT_INTERVAL_MIN);
   }
 }
 

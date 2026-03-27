@@ -262,7 +262,14 @@ class CollisionManager {
         this.sceneManager.lasers = [];
         this.sceneManager.powerups = [];
         this.sceneManager.level.set();
-        console.log(this.sceneManager.checkPoint.boundingBox.x);
+        if (this.sceneManager.enabledDroidTypes) {
+          // Training mode: drain into the filtered pool so level.update() doesn't
+          // bypass the pool system and spawn all types at once.
+          this.sceneManager.trainingDroidPool = this.sceneManager.level.unspawnedDroids.filter(
+            d => this.sceneManager.enabledDroidTypes.has(d.constructor.name)
+          );
+          this.sceneManager.level.unspawnedDroids = [];
+        }
         zerlin.setXY(this.sceneManager.checkPoint.boundingBox.x, 0);
         zerlin.deltaY = 0;
       }

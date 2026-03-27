@@ -179,6 +179,13 @@ class GameEngine {
     lightningHueSlider.value = this.lightningHue;
     document.getElementById("lightningHueVal").textContent = hueLabel(this.lightningHue);
 
+    document.querySelectorAll('input[name="droidType"]').forEach(cb => {
+      cb.checked = this.sceneManager.enabledDroidTypes.has(cb.value);
+      cb.addEventListener('change', () => {
+        this.sceneManager.setDroidTypeEnabled(cb.value, cb.checked);
+      });
+    });
+
     document.querySelectorAll('input[name="trainingBg"]').forEach(radio => {
       radio.addEventListener('change', () => {
         if (radio.checked) {

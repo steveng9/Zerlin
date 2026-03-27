@@ -76,7 +76,9 @@ Constants = {
 
     /* Sniper droid laser constants */
     SNIPER_DROID_LASER_SPEED: 850,
-    SNIPER_DROID_SHOOT_INTERVAL: 7,
+    SNIPER_DROID_SHOOT_INTERVAL: 7,       // fallback / initial pool value (not used for timing)
+    SNIPER_DROID_SHOOT_INTERVAL_MIN: 3,   // shortest gap between sniper shots (seconds)
+    SNIPER_DROID_SHOOT_INTERVAL_MAX: 10,  // longest gap between sniper shots (seconds)
     SNIPER_DROID_LASER_LENGTH: 50,
     SNIPER_DROID_LASER_WIDTH: 15,
 
@@ -285,7 +287,15 @@ Michael Josten`,
     GAME_FONT: 'VT323',
 
     TRAINING_DEFAULT_DROIDS: 3,
-    TRAINING_DEFAULT_LASER_MULT: 2
+    TRAINING_DEFAULT_LASER_MULT: 2,
+
+    // Set each to true/false to control which droid types are enabled on first load
+    TRAINING_DEFAULT_BASIC:      false,
+    TRAINING_DEFAULT_SCATTER:    false,
+    TRAINING_DEFAULT_SLOW_BURST: false,
+    TRAINING_DEFAULT_FAST_BURST: true,
+    TRAINING_DEFAULT_SNIPER:     true,
+    TRAINING_DEFAULT_MULTISHOT:  false
   },
 
   CollisionManagerConstants: {

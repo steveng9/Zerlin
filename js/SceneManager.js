@@ -752,9 +752,19 @@ class SceneManager2 {
     this.bossMusicSwitched = false;
     this.bossHealthBar = null;
     this.level.set();
+    // Preserve the user's checkbox selections across respawns; only initialize on first entry
+    if (!this.enabledDroidTypes) {
+      this.enabledDroidTypes = new Set();
+      if (smc.TRAINING_DEFAULT_BASIC)      this.enabledDroidTypes.add('BasicDroid');
+      if (smc.TRAINING_DEFAULT_SCATTER)    this.enabledDroidTypes.add('ScatterShotDroid');
+      if (smc.TRAINING_DEFAULT_SLOW_BURST) this.enabledDroidTypes.add('SlowBurstDroid');
+      if (smc.TRAINING_DEFAULT_FAST_BURST) this.enabledDroidTypes.add('FastBurstDroid');
+      if (smc.TRAINING_DEFAULT_SNIPER)     this.enabledDroidTypes.add('SniperDroid');
+      if (smc.TRAINING_DEFAULT_MULTISHOT)  this.enabledDroidTypes.add('MultishotDroid');
+    }
 
     // Drain all droids from level into our controlled pool; powerups spawn normally
-    this.trainingDroidPool = this.level.unspawnedDroids.slice();
+    this.trainingDroidPool = this.level.unspawnedDroids.filter(d => this.enabledDroidTypes.has(d.constructor.name));
     this.level.unspawnedDroids = [];
 
     this.addEntity(new HealthStatusBar(this.game, this, 25, 25));
@@ -813,9 +823,9 @@ class SceneManager2 {
       this.level.update();
 
       // Staggered droid spawning — refill pool silently when exhausted
-      if (this.trainingDroidPool.length === 0) {
+      if (this.trainingDroidPool.length === 0 && this.enabledDroidTypes.size > 0) {
         this.level.set();
-        this.trainingDroidPool = this.level.unspawnedDroids.slice();
+        this.trainingDroidPool = this.level.unspawnedDroids.filter(d => this.enabledDroidTypes.has(d.constructor.name));
         this.level.unspawnedDroids = [];
       }
       this.trainingSpawnTimer -= this.game.clockTick;
@@ -885,14 +895,12 @@ class SceneManager2 {
       this.canPause = true;
     }
 
-    // On death: show game over then restart training ground
+    // On death: wait for death animation then restart training ground quickly
     if (!this.startedFinalOverlay && !this.Zerlin.alive) {
       this.canPause = false;
       if (this.levelSceneTimer > this.Zerlin.timeOfDeath + this.Zerlin.deathAnimation.totalTime) {
         this.startedFinalOverlay = true;
-        this.sceneEntities.push(new Overlay(this.game, false, smc.LEVEL_TRANSITION_OVERLAY_TIME));
-        this.sceneEntities.push(new GameOverTextScreen(this.game));
-        this.stopLevelTime = this.levelSceneTimer + 6;
+        this.stopLevelTime = this.levelSceneTimer + 1.5;
         this.startNewScene = true;
       }
     }
@@ -978,6 +986,23 @@ class SceneManager2 {
     Constants.DroidBasicConstants.SLOWBURST_DROID_LASER_SPEED  = o.slowburst;
     Constants.DroidBasicConstants.FASTBURST_DROID_LASER_SPEED  = o.fastburst;
     Constants.DroidBasicConstants.SNIPER_DROID_LASER_SPEED     = o.sniper;
+  }
+
+  setDroidTypeEnabled(typeName, enabled) {
+    if (!this.enabledDroidTypes) return;
+    if (enabled) {
+      this.enabledDroidTypes.add(typeName);
+    } else {
+      this.enabledDroidTypes.delete(typeName);
+      // Remove any live droids of this type immediately
+      for (let i = this.droids.length - 1; i >= 0; i--) {
+        if (this.droids[i].constructor.name === typeName) {
+          this.droids.splice(i, 1);
+        }
+      }
+    }
+    // Re-filter the queued pool to match the new enabled set
+    this.trainingDroidPool = this.trainingDroidPool.filter(d => this.enabledDroidTypes.has(d.constructor.name));
   }
 
   setTrainingBackground(index) {
