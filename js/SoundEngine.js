@@ -486,13 +486,10 @@ class SoundEngine {
   }
 
   //play a sound fx if not currently muted
-  playSoundFx(howlerSound, id = '') {
+  playSoundFx(howlerSound, id = '', volume = null) {
     if (!this.soundFxMuted) {
-      if (id === '') {
-        howlerSound.play();
-      } else {
-        howlerSound.play(id);
-      }
+      var soundId = id === '' ? howlerSound.play() : howlerSound.play(id);
+      if (volume !== null) howlerSound.volume(volume, soundId);
     }
   }
 

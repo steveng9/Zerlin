@@ -7,6 +7,78 @@ Joshua Atherton, Michael Josten, Steven Golob
 //PHI is now a global constant so dont need to call c.PHI, can just call PHI
 var gec = Constants.GameEngineConstants;
 
+// --- Saber sprite recoloring ---
+// Converts a pixel (RGB) to HSL (all values 0-1)
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return [h, s, l];
+}
+
+function hslToRgb(h, s, l) {
+  if (s === 0) { const v = Math.round(l * 255); return [v, v, v]; }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+  const hue2 = (t) => {
+    if (t < 0) t += 1; if (t > 1) t -= 1;
+    if (t < 1/6) return p + (q - p) * 6 * t;
+    if (t < 1/2) return q;
+    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+    return p;
+  };
+  return [Math.round(hue2(h + 1/3) * 255), Math.round(hue2(h) * 255), Math.round(hue2(h - 1/3) * 255)];
+}
+
+// Returns an offscreen canvas with green pixels hue-shifted by hueShift degrees.
+// Skin tones (hue < 80°) are left untouched.
+// Falls back to a canvas hue-rotate filter if getImageData is blocked (file:// CORS taint).
+function recolorGreenPixels(img, hueShift) {
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth || img.width;
+  c.height = img.naturalHeight || img.height;
+  const cx = c.getContext('2d');
+  try {
+    cx.drawImage(img, 0, 0);
+    const id = cx.getImageData(0, 0, c.width, c.height), d = id.data;
+    const shift = hueShift / 360;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 10) continue;
+      const [h, s, l] = rgbToHsl(d[i], d[i + 1], d[i + 2]);
+      if (s > 0.40 && h >= 90/360 && h <= 155/360) {
+        const [r, g, b] = hslToRgb((h + shift) % 1, s, l);
+        d[i] = r; d[i + 1] = g; d[i + 2] = b;
+      }
+    }
+    cx.putImageData(id, 0, 0);
+  } catch (e) {
+    // file:// blocks getImageData — fall back to CSS filter on the offscreen canvas
+    cx.filter = 'hue-rotate(' + hueShift + 'deg)';
+    cx.drawImage(img, 0, 0);
+  }
+  return c;
+}
+
+function hueLabel(deg) {
+  if (deg === 0)   return 'Green (original)';
+  if (deg < 60)    return 'Cyan-green';
+  if (deg < 100)   return 'Cyan';
+  if (deg < 150)   return 'Blue';
+  if (deg < 200)   return 'Indigo';
+  if (deg < 240)   return 'Purple';
+  if (deg < 290)   return 'Magenta';
+  if (deg < 330)   return 'Red';
+  return 'Orange';
+}
+
 window.requestAnimFrame = (function() {
   return window.requestAnimationFrame ||
     window.webkitRequestAnimationFrame ||
@@ -30,7 +102,18 @@ class GameEngine {
       y: 100
     };
     this.click = null;
-    this.keys = {};    
+    this.keys = {};
+    this.saberSpriteCache = new WeakMap(); // img → Map(hueShift → canvas)
+  }
+
+  // Returns a cached recolored canvas for img at the current saberHue.
+  // If saberHue is 0 (original green), returns img unchanged.
+  getRecoloredSprite(img) {
+    if (!img || this.saberHue === 0) return img;
+    if (!this.saberSpriteCache.has(img)) this.saberSpriteCache.set(img, new Map());
+    const hueMap = this.saberSpriteCache.get(img);
+    if (!hueMap.has(this.saberHue)) hueMap.set(this.saberHue, recolorGreenPixels(img, this.saberHue));
+    return hueMap.get(this.saberHue);
   }
 
   init(ctx) {
@@ -77,6 +160,24 @@ class GameEngine {
       document.getElementById("droidCountVal").textContent = count;
       this.sceneManager.trainingTargetDroids = count;
     });
+
+    this.saberHue = 120; // degrees of hue-rotate; 0 = original green, 120 = blue
+    var saberHueSlider = document.getElementById("saberHueSlider");
+    saberHueSlider.addEventListener('input', () => {
+      this.saberHue = parseInt(saberHueSlider.value);
+      document.getElementById("saberHueVal").textContent = hueLabel(this.saberHue);
+    });
+    saberHueSlider.value = this.saberHue;
+    document.getElementById("saberHueVal").textContent = hueLabel(this.saberHue);
+
+    this.lightningHue = 240; // hue of lightning color; 240 = blue (default)
+    var lightningHueSlider = document.getElementById("lightningHueSlider");
+    lightningHueSlider.addEventListener('input', () => {
+      this.lightningHue = parseInt(lightningHueSlider.value);
+      document.getElementById("lightningHueVal").textContent = hueLabel(this.lightningHue);
+    });
+    lightningHueSlider.value = this.lightningHue;
+    document.getElementById("lightningHueVal").textContent = hueLabel(this.lightningHue);
 
     document.querySelectorAll('input[name="trainingBg"]').forEach(radio => {
       radio.addEventListener('change', () => {

@@ -31,20 +31,21 @@ class LightningOrb extends Entity {
 		// orb draw radius 'pulses' around core radius.
 		// orb pulses faster as it grows
 		var drawRadius = this.radius + zc.Z_SCALE * ltng.ORB_PULSATION_MAGNITUDE * (Math.sin(4 * this.powerTimer * this.powerTimer) + 1);
+		var h = this.game.lightningHue;
 
-		this.game.ctx.strokeStyle = "blue";
+		this.game.ctx.strokeStyle = 'hsl(' + h + ', 100%, 50%)';
 		this.ctx.beginPath();
 		this.ctx.arc(this.x - this.camera.x, this.y, drawRadius * 2, 0, Math.PI * 2, false);
 		this.ctx.stroke();
 		this.ctx.closePath();
 
-		this.game.ctx.fillStyle = "blue";
+		this.game.ctx.fillStyle = 'hsl(' + h + ', 100%, 50%)';
 		this.ctx.beginPath();
 		this.ctx.arc(this.x - this.camera.x, this.y, drawRadius * 1.5, 0, Math.PI * 2, false);
 		this.ctx.fill();
 		this.ctx.closePath();
 
-		this.game.ctx.fillStyle = "#3d8edb";
+		this.game.ctx.fillStyle = 'hsl(' + h + ', 70%, 65%)';
 		this.ctx.beginPath();
 		this.ctx.arc(this.x - this.camera.x, this.y, drawRadius * 1.3, 0, Math.PI * 2, false);
 		this.ctx.fill();
@@ -111,7 +112,7 @@ class LightningBolt extends Entity {
 			let segment = this.segments[i];
 			//Outer Layer
 			ctx.lineWidth = width * 2;
-			ctx.strokeStyle = "blue";
+			ctx.strokeStyle = 'hsl(' + this.game.lightningHue + ', 100%, 50%)';
 			ctx.lineCap = "round";
 			ctx.beginPath();
 			ctx.moveTo(segment.p1.x - cameraX, segment.p1.y);

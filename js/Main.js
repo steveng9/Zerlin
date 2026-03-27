@@ -23,24 +23,35 @@ class AssetManager {
   }
   downloadAll(callback) {
     for (var i = 0; i < this.downloadQueue.length; i++) {
-      var img = new Image();
-      var that = this;
-      var path = this.downloadQueue[i];
-      // console.log(path);
-      img.addEventListener("load", function() {
-        // console.log("Loaded " + this.src);
-        that.successCount++;
-        if (that.isDone())
-          callback();
-      });
-      img.addEventListener("error", function() {
-        console.log("Error loading " + this.src);
-        that.errorCount++;
-        if (that.isDone())
-          callback();
-      });
-      img.src = path;
-      this.cache[path] = img;
+      (function(that, path) {
+        var img = new Image();
+        img.addEventListener("load", function() {
+          that.successCount++;
+          if (that.isDone()) callback();
+        });
+        img.addEventListener("error", function() {
+          console.log("Error loading " + path);
+          that.errorCount++;
+          if (that.isDone()) callback();
+        });
+        // Load as blob then convert to data-URL so canvas.getImageData is never
+        // blocked by the browser's cross-origin taint rule (affects file:// protocol).
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', path, true);
+        xhr.responseType = 'blob';
+        xhr.onload = function() {
+          if (this.status === 200 || this.status === 0) { // status 0 = file://
+            var reader = new FileReader();
+            reader.onloadend = function() { img.src = reader.result; };
+            reader.readAsDataURL(xhr.response);
+          } else {
+            img.src = path; // fallback
+          }
+        };
+        xhr.onerror = function() { img.src = path; };
+        xhr.send();
+        that.cache[path] = img;
+      })(this, this.downloadQueue[i]);
     }
   }
   getAsset(path) {

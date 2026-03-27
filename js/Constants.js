@@ -124,6 +124,11 @@ Constants = {
     Z_FALLING_DOWN_FRAMES: 2,
     Z_FALLING_FRAME_SPEED: .16,
 
+    Z_JUMP_IMAGE_WIDTH: 84,
+    Z_JUMP_IMAGE_HEIGHT: 192, // full image is 240px but bottom 1/5 (~48px) is zoomy lines — crop them
+    Z_JUMP_ARM_SOCKET_X: 33, // pixel column of the arm socket within jump.png
+    Z_JUMP_SCALE_FACTOR: 1.5, // jump sprite has smaller pixel art; enlarge to match Zerlin's normal size
+
     Z_SOMERSAULT_WIDTH: 462,
     Z_SOMERSAULT_HEIGHT: 306,
     Z_SOMERSAULT_FRAME_SPEED: .1,
@@ -131,7 +136,7 @@ Constants = {
 
     Z_SLASH_WIDTH: 558,
     Z_SLASH_HEIGHT: 390,
-    Z_SLASH_FRAME_SPEED: .03,
+    Z_SLASH_FRAME_SPEED: .025,
     Z_SLASH_FRAMES: 20,
     Z_ARM_SOCKET_X_SLASH_FRAME: 69,
     Z_ARM_SOCKET_Y_SLASH_FRAME: 230,
@@ -151,6 +156,7 @@ Constants = {
     Z_WALKING_SPEED: 200,
     Z_SOMERSAULT_SPEED: 400,
     FORCE_JUMP_DELTA_Y: -950,
+    FORCE_JUMP_REIGNITE_THRESHOLD: -150, // re-ignite saber when deltaY rises above this (~150ms before jump peak)
     JUMP_DELTA_Y: -600,
     GRAVITATIONAL_ACCELERATION: 1000,
 
@@ -279,7 +285,7 @@ Michael Josten`,
     GAME_FONT: 'VT323',
 
     TRAINING_DEFAULT_DROIDS: 3,
-    TRAINING_DEFAULT_LASER_MULT: 1.6
+    TRAINING_DEFAULT_LASER_MULT: 2
   },
 
   CollisionManagerConstants: {

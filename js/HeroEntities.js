@@ -39,6 +39,7 @@ class Zerlin extends Entity {
     this.somersaulting = false;
     this.crouching = false;
     this.falling = true;
+    this.forceJumping = false;
     this.armSocketY = zc.Z_ARM_SOCKET_Y;
     this.faceRight();
 
@@ -152,10 +153,14 @@ class Zerlin extends Entity {
           this.falling = true;
           if (this.currentForce - zc.Z_FORCE_JUMP_FORCE_COST >= 0) {
             /** for testing sound */
-            this.game.audio.playSoundFx(this.game.audio.hero, 'forceJump');
+            this.game.audio.playSoundFx(this.game.audio.hero, 'forceJump', 0.2);
             this.deltaY = zc.FORCE_JUMP_DELTA_Y;
             //make force jump cost force power
             this.currentForce -= zc.Z_FORCE_JUMP_FORCE_COST;
+            // turn off saber — player is vulnerable until just before peak
+            this.forceJumping = true;
+            this.game.audio.saberHum.stop();
+            this.lightsaber.hidden = true;
           }
           //otherwise do a regular jump
           else {
@@ -176,6 +181,13 @@ class Zerlin extends Entity {
       if (this.falling) {
         this.lastBottom = this.boundingbox.bottom;
         this.deltaY += zc.GRAVITATIONAL_ACCELERATION * this.game.clockTick;
+        // re-ignite saber just before the peak of a force jump
+        if (this.forceJumping && this.deltaY > zc.FORCE_JUMP_REIGNITE_THRESHOLD) {
+          this.forceJumping = false;
+          this.game.audio.playSoundFx(this.game.audio.lightsaber, 'lightsaberOn', 0.04);
+          this.game.audio.playSoundFx(this.game.audio.saberHum);
+          this.lightsaber.hidden = false;
+        }
       }
 
       if (this.somersaulting) {
@@ -295,7 +307,14 @@ class Zerlin extends Entity {
         this.animation = this.slashingLeftAnimation;
       }
     } else if (this.falling) {
-      if (this.facingRight) {
+      if (this.forceJumping && this.deltaY < 0) {
+        // force jump ascent — use the jump sprite (arm built in, saber hidden)
+        var jumpScale = this.scale * zc.Z_JUMP_SCALE_FACTOR;
+        this.animation = this.forceJumpAscentAnimation;
+        this.drawX = this.facingRight
+          ? this.x - zc.Z_JUMP_ARM_SOCKET_X * jumpScale
+          : this.x - (zc.Z_JUMP_IMAGE_WIDTH - zc.Z_JUMP_ARM_SOCKET_X) * jumpScale;
+      } else if (this.facingRight) {
         this.animation = this.deltaY < 0 ? this.fallingUpAnimation : this.fallingDownAnimation;
         this.drawX = this.x - zc.Z_ARM_SOCKET_X * this.scale;
       } else { // facing left
@@ -330,8 +349,26 @@ class Zerlin extends Entity {
       }
     }
 
-    this.animation.scale = this.scale;
-    this.animation.drawFrame(this.game.clockTick, this.ctx, this.drawX - this.camera.x, this.y - this.animation.frameHeight * this.scale);
+    var activeScale = (this.forceJumping && this.deltaY < 0 && !this.slashing) ? this.scale * zc.Z_JUMP_SCALE_FACTOR : this.scale;
+    this.animation.scale = activeScale;
+    if (this.slashing) {
+      var orig = this.animation.spriteSheet;
+      this.animation.spriteSheet = this.game.getRecoloredSprite(orig);
+      this.animation.drawFrame(this.game.clockTick, this.ctx, this.drawX - this.camera.x, this.y - this.animation.frameHeight * activeScale);
+      this.animation.spriteSheet = orig;
+    } else if (this.forceJumping && this.deltaY < 0 && !this.facingRight) {
+      // mirror jump.png horizontally for left-facing (no left sprite exists)
+      var dX = this.drawX - this.camera.x;
+      var dY = this.y - this.animation.frameHeight * activeScale;
+      var dW = this.animation.frameWidth * activeScale;
+      this.ctx.save();
+      this.ctx.translate(dX + dW, dY);
+      this.ctx.scale(-1, 1);
+      this.animation.drawFrame(this.game.clockTick, this.ctx, 0, 0);
+      this.ctx.restore();
+    } else {
+      this.animation.drawFrame(this.game.clockTick, this.ctx, this.drawX - this.camera.x, this.y - this.animation.frameHeight * activeScale);
+    }
     this.lightsaber.draw();
 
     if (zc.DRAW_COLLISION_BOUNDRIES) {
@@ -424,7 +461,7 @@ class Zerlin extends Entity {
 
   startSomersault() {
     this.currentForce -= zc.Z_SOMERSAULT_FORCE_COST;
-    this.game.audio.playSoundFx(this.game.audio.lightsaber, 'lightsaberOff');
+    this.game.audio.playSoundFx(this.game.audio.lightsaber, 'lightsaberOff', 0.04);
     this.game.audio.saberHum.stop();
     this.somersaulting = true;
     this.deltaX = zc.Z_SOMERSAULT_SPEED * this.direction;
@@ -436,7 +473,7 @@ class Zerlin extends Entity {
   }
 
   finishSomersault() {
-    this.game.audio.playSoundFx(this.game.audio.lightsaber, 'lightsaberOn');
+    this.game.audio.playSoundFx(this.game.audio.lightsaber, 'lightsaberOn', 0.04);
     this.game.audio.playSoundFx(this.game.audio.saberHum);
     this.animation.elapsedTime = 0;
     this.deltaX = 0;
@@ -566,6 +603,13 @@ class Zerlin extends Entity {
       zc.Z_HEIGHT,
       zc.Z_WALKING_FRAME_SPEED,
       zc.Z_WALKING_FRAMES,
+      true, false,
+      zc.Z_SCALE);
+    this.forceJumpAscentAnimation = new Animation(this.assetManager.getAsset("img/jump.png"),
+      0, 0,
+      zc.Z_JUMP_IMAGE_WIDTH,
+      zc.Z_JUMP_IMAGE_HEIGHT,
+      1, 1,
       true, false,
       zc.Z_SCALE);
     this.fallingUpAnimation = new Animation(this.assetManager.getAsset("img/Zerlin falling up.png"),
@@ -868,7 +912,7 @@ class Lightsaber extends Entity {
       this.ctx.save();
       this.ctx.translate(this.x - this.camera.x, this.y);
       this.ctx.rotate(this.angle + this.bounceOffset);
-      this.ctx.drawImage(this.image,
+      this.ctx.drawImage(this.game.getRecoloredSprite(this.image),
         0,
         0,
         this.width,
@@ -1143,8 +1187,11 @@ class AirbornSaber extends Entity {
   }
 
   draw() {
+    var orig = this.animation.spriteSheet;
+    this.animation.spriteSheet = this.game.getRecoloredSprite(orig);
     this.animation.scale = this.arm.Zerlin.scale;
     this.animation.drawFrame(this.game.clockTick, this.game.ctx, this.x - this.width / 2 - this.camera.x, this.y - this.height / 2);
+    this.animation.spriteSheet = orig;
   }
 
   checkIfReachedPinnacle() {
