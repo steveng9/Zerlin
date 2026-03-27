@@ -109,3 +109,108 @@ body h2 {
   margin-right: 8px;
   cursor: pointer;
 }
+
+/* ── Multiplayer lobby overlay ─────────────────────────────────────── */
+#lobbyOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.82);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#lobbyBox {
+  background: #0a0a0a;
+  border: 2px solid #00ff88;
+  padding: 36px 44px;
+  text-align: center;
+  font-family: 'VT323', monospace;
+  color: #00ff88;
+  min-width: 340px;
+}
+
+#lobbyTitle {
+  font-size: 32px;
+  letter-spacing: 4px;
+  margin-bottom: 28px;
+  color: #00ff88;
+  text-shadow: 0 0 10px #00ff88;
+}
+
+.lobby-label {
+  font-size: 18px;
+  color: #aaaaaa;
+  margin-bottom: 10px;
+}
+
+#roomCodeDisplay {
+  font-size: 52px;
+  letter-spacing: 10px;
+  color: #ffffff;
+  text-shadow: 0 0 12px #00ff88;
+  margin: 10px 0 16px;
+}
+
+#roomCodeInput {
+  background: #111;
+  border: 1px solid #00ff88;
+  color: #ffffff;
+  font-family: 'VT323', monospace;
+  font-size: 36px;
+  letter-spacing: 8px;
+  text-align: center;
+  width: 200px;
+  padding: 6px 10px;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.lobby-status {
+  font-size: 16px;
+  color: #888888;
+  margin: 10px 0 16px;
+  min-height: 22px;
+}
+
+.lobby-btn {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 1px solid #00ff88;
+  color: #00ff88;
+  font-family: 'VT323', monospace;
+  font-size: 22px;
+  letter-spacing: 2px;
+  padding: 8px 0;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.lobby-btn:hover {
+  background: #00ff88;
+  color: #000000;
+}
+
+.lobby-btn-cancel {
+  border-color: #555555;
+  color: #555555;
+  margin-top: 6px;
+}
+
+.lobby-btn-cancel:hover {
+  background: #555555;
+  color: #000000;
+}
+
+.lobby-btn-copy {
+  font-size: 17px;
+  padding: 5px 0;
+}
+

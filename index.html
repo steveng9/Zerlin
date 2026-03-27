@@ -28,6 +28,11 @@
   <script type="text/javascript" src="./js/howler.js"></script>
   <script type="text/javascript" src="./js/SoundEngine.js"></script>
   <script type="text/javascript" src="./js/Boss.js"></script>
+
+  <!-- Multiplayer -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script type="text/javascript" src="./js/NetworkManager.js"></script>
+
   <script type="text/javascript" src="./js/Main.js"></script>
 </head>
 
@@ -47,10 +52,43 @@
       <!-- width = height * PHI -->
       <canvas id="gameWorld" tabindex="1" width="1133" height="700" style="border: 1px solid black; background: black"></canvas>
 
+      <!-- Multiplayer lobby overlay -->
+      <div id="lobbyOverlay" style="display:none;">
+        <div id="lobbyBox">
+          <div id="lobbyTitle">CO-OP MULTIPLAYER</div>
+
+          <!-- Main choice -->
+          <div id="lobbyChoicePanel">
+            <button class="lobby-btn" id="hostBtn">HOST GAME</button>
+            <button class="lobby-btn" id="joinBtn">JOIN GAME</button>
+            <button class="lobby-btn lobby-btn-cancel" id="lobbyCancelBtn">CANCEL</button>
+          </div>
+
+          <!-- Host waiting panel -->
+          <div id="lobbyHostPanel" style="display:none;">
+            <div class="lobby-label">Share this code with your partner:</div>
+            <div id="roomCodeDisplay">------</div>
+            <button class="lobby-btn lobby-btn-copy" id="copyCodeBtn">COPY CODE</button>
+            <div id="hostStatus" class="lobby-status">Waiting for partner to connect...</div>
+            <button class="lobby-btn lobby-btn-cancel" id="hostCancelBtn">CANCEL</button>
+          </div>
+
+          <!-- Join panel -->
+          <div id="lobbyJoinPanel" style="display:none;">
+            <div class="lobby-label">Enter room code:</div>
+            <input type="text" id="roomCodeInput" maxlength="6" placeholder="XXXXXX" autocomplete="off" spellcheck="false">
+            <button class="lobby-btn" id="connectBtn">CONNECT</button>
+            <div id="joinStatus" class="lobby-status">&nbsp;</div>
+            <button class="lobby-btn lobby-btn-cancel" id="joinCancelBtn">CANCEL</button>
+          </div>
+        </div>
+      </div>
+
       <!-- cheat buttons -->
       <div class="cheat_buttons">
         <input type="button" id="infiniteHealth" value="Infinite Health: ON" style="background:#cc3300; color:#ffffff;">
         <input type="button" id="trainingGroundButton" value="Training Ground">
+        <input type="button" id="multiplayerButton" value="Multiplayer">
         <input type="button" id="campaignButton" value="Campaign">
         <div id="trainingControls" style="display:none; margin-top:10px; text-align:right;">
           <div class="training-knob">

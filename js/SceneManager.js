@@ -732,6 +732,12 @@ class SceneManager2 {
 
 
   //________________________________________________________
+  // Stub — Phase 2 will implement full multiplayer training scene
+  startMultiplayerTrainingScene() {
+    console.log('[Multiplayer] startMultiplayerTrainingScene called — stub (Phase 2)');
+    this.startTrainingGroundScene();
+  }
+
   startTrainingGroundScene() {
     this.game.audio.campFire.stop();
     this.game.audio.endAllSoundFX();

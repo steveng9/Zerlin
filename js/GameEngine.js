@@ -147,6 +147,10 @@ class GameEngine {
       this.sceneManager.startOpeningScene();
     });
 
+    // ── Multiplayer lobby ──────────────────────────────────────────────
+    this.network = new NetworkManager();
+    this._initLobbyUI();
+
     var laserSlider = document.getElementById("laserSpeedSlider");
     laserSlider.addEventListener('input', () => {
       var mult = parseFloat(laserSlider.value);
@@ -301,6 +305,112 @@ class GameEngine {
     }, false);
 
     console.log('Input started');
+  }
+
+  _initLobbyUI() {
+    var overlay    = document.getElementById('lobbyOverlay');
+    var choicePanel = document.getElementById('lobbyChoicePanel');
+    var hostPanel  = document.getElementById('lobbyHostPanel');
+    var joinPanel  = document.getElementById('lobbyJoinPanel');
+
+    var showPanel = (panel) => {
+      choicePanel.style.display = 'none';
+      hostPanel.style.display   = 'none';
+      joinPanel.style.display   = 'none';
+      panel.style.display       = 'block';
+    };
+
+    var closeLobby = () => {
+      overlay.style.display = 'none';
+      this.network.disconnect();
+      showPanel(choicePanel); // reset for next open
+      document.getElementById('hostStatus').textContent = 'Waiting for partner to connect...';
+      document.getElementById('joinStatus').textContent = '\u00a0';
+      document.getElementById('roomCodeDisplay').textContent = '------';
+      document.getElementById('roomCodeInput').value = '';
+    };
+
+    // Open lobby
+    document.getElementById('multiplayerButton').addEventListener('click', () => {
+      showPanel(choicePanel);
+      overlay.style.display = 'flex';
+    });
+
+    // Cancel buttons
+    document.getElementById('lobbyCancelBtn').addEventListener('click', closeLobby);
+    document.getElementById('hostCancelBtn').addEventListener('click', closeLobby);
+    document.getElementById('joinCancelBtn').addEventListener('click', closeLobby);
+
+    // Host flow
+    document.getElementById('hostBtn').addEventListener('click', () => {
+      showPanel(hostPanel);
+      document.getElementById('roomCodeDisplay').textContent = '...';
+      document.getElementById('hostStatus').textContent = 'Connecting to signaling server...';
+
+      this.network.onRoomReady = (code) => {
+        document.getElementById('roomCodeDisplay').textContent = code;
+        document.getElementById('hostStatus').textContent = 'Waiting for partner to connect...';
+      };
+      this.network.onConnected = () => {
+        document.getElementById('hostStatus').textContent = 'Partner connected! Starting...';
+        setTimeout(() => {
+          closeLobby();
+          this.sceneManager.startMultiplayerTrainingScene();
+        }, 800);
+      };
+      this.network.onDisconnected = () => {
+        document.getElementById('hostStatus').textContent = 'Partner disconnected.';
+      };
+      this.network.onError = (err) => {
+        document.getElementById('hostStatus').textContent = 'Error: ' + err.type;
+      };
+      this.network.host();
+    });
+
+    // Copy code button
+    document.getElementById('copyCodeBtn').addEventListener('click', () => {
+      var code = document.getElementById('roomCodeDisplay').textContent;
+      if (code && code !== '...' && code !== '------') {
+        navigator.clipboard.writeText(code).catch(() => {});
+      }
+    });
+
+    // Join flow
+    document.getElementById('joinBtn').addEventListener('click', () => {
+      showPanel(joinPanel);
+    });
+
+    document.getElementById('connectBtn').addEventListener('click', () => {
+      var code = document.getElementById('roomCodeInput').value.toUpperCase().trim();
+      if (code.length < 6) {
+        document.getElementById('joinStatus').textContent = 'Enter a 6-character code.';
+        return;
+      }
+      document.getElementById('joinStatus').textContent = 'Connecting...';
+
+      this.network.onConnected = () => {
+        document.getElementById('joinStatus').textContent = 'Connected! Starting...';
+        setTimeout(() => {
+          closeLobby();
+          this.sceneManager.startMultiplayerTrainingScene();
+        }, 800);
+      };
+      this.network.onDisconnected = () => {
+        document.getElementById('joinStatus').textContent = 'Disconnected.';
+      };
+      this.network.onError = (err) => {
+        var msg = err.type === 'peer-unavailable'
+          ? 'Room not found. Check the code.'
+          : 'Error: ' + err.type;
+        document.getElementById('joinStatus').textContent = msg;
+      };
+      this.network.join(code);
+    });
+
+    // Allow pressing Enter in the code input to connect
+    document.getElementById('roomCodeInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('connectBtn').click();
+    });
   }
 
 }
