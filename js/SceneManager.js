@@ -762,6 +762,7 @@ class SceneManager2 {
     this.Zerlin.maxHealth = 15;
     this.Zerlin.maxForce = 15;
     this.Zerlin.reset();
+    this.Zerlin.setHealth(); // apply god mode if active
 
     this.trainingKills = 0;
     this.trainingSpawnTimer = 0;

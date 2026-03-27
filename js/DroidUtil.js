@@ -295,9 +295,11 @@ class DroidExplosion extends Entity {
 		this.scale = scale? scale * duc.EXPLOSION_SCALE : duc.EXPLOSION_SCALE;
 		this.volume = explosionVolume? explosionVolume : .15;
 		this.speed = speed? speed : duc.EXPLOSION_FRAME_SPEED;
-		var spritesheet = this.game.assetManager.getAsset("img/explosion_josh.png");
+		var useAlt = Math.random() < 0.5;
+		var spritesheet = this.game.assetManager.getAsset(useAlt ? "img/Explosion.png" : "img/explosion_josh.png");
+		var frameCount = useAlt ? 15 : 21;
 		this.animation = new Animation(spritesheet, 0, 0, 64, 64,
-				this.speed, 21, false, false, this.scale);
+				this.speed, frameCount, false, false, this.scale);
 
 		this.x = x - this.animation.frameWidth * this.scale / 2;
 		this.y = y - this.animation.frameHeight * this.scale / 2;

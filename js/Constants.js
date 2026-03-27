@@ -155,9 +155,9 @@ Constants = {
     GRAVITATIONAL_ACCELERATION: 1000,
 
     /* Hit-reaction & saber-bounce tuning */
-    HIT_SHAKE_INTENSITY: 6,       // px — max camera displacement per hit
+    HIT_SHAKE_INTENSITY: 1,       // px — max camera displacement per hit
     HIT_SHAKE_DURATION: 0.25,     // seconds the shake lasts (decays linearly)
-    SABER_BOUNCE_ANGLE: Math.PI / 8,   // radians — max saber kick per deflect (~22.5°)
+    SABER_BOUNCE_ANGLE: Math.PI / 16,   // radians — max saber kick per deflect (~22.5°)
     SABER_BOUNCE_DECAY_RATE: 10,       // radians/sec — how fast saber snaps back to aim
 
     SABER_GLOW_RADIUS: 13,
@@ -522,16 +522,16 @@ Michael Josten`,
     ],
 
     TRAINING_GROUND_LAYOUT: [
-      'd s b f n m d s ',
-      ' n m d s f b n m',
-      'f b s n H d f b ',
-      ' -------        ',
-      ' s n f m b d s n',
-      'n m b f s F n m ',
-      '  -----  -----  ',
-      'd f n s m b d f ',
-      ' m b s n d f m b',
-      ' -------------- '
+      'd s b f n m d s ',   // droids — open sky
+      ' n m d s f b n m',   // droids
+      '        H       ',   // health powerup, open air above tier 3
+      '    --      --  ',   // tier 3 — two tiny platforms (very sparse)
+      ' d  n F m   b   ',   // droids + force powerup between tiers 3 & 2
+      '  -----   ---   ',   // tier 2 — two short platforms (sparse)
+      ' d  s  f  n  m  ',   // droids between tiers 2 & 1
+      ' -------  ----- ',   // tier 1 — two medium platforms
+      ' m b n s d f m b',   // droids above floor
+      ' -------------- '    // floor — full coverage
     ]
 
   },
