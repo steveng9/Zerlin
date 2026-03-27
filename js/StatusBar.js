@@ -226,6 +226,17 @@ class ForceStatusBar extends AbstractStatusBar {
   }
 }
 
+// ── Player 2 status bars ──────────────────────────────────────────────────────
+class HealthStatusBarP2 extends HealthStatusBar {
+  setCurrent() { this.current = this.sceneManager.Zerlin2.currentHealth; }
+  setMaxSize() { this.maxSize = this.sceneManager.Zerlin2.maxHealth; }
+}
+
+class ForceStatusBarP2 extends ForceStatusBar {
+  setCurrent() { this.current = this.sceneManager.Zerlin2.currentForce; }
+  setMaxSize() { this.maxSize = this.sceneManager.Zerlin2.maxForce; }
+}
+
 class BossHealthStatusBar extends AbstractStatusBar {
   constructor(game, x, y, boss) {
     super(game, game.sceneManager, x, y, sbc.BOSS_BAR_HAS_CRITICAL_STATE);

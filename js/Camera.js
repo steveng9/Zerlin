@@ -19,19 +19,18 @@ class Camera {
   }
 
   update() {
-    if (this.sceneManager.Zerlin.x - cc.ZERLIN_POSITION_ON_SCREEN * this.width >= 0 &&
-        this.sceneManager.Zerlin.x <= this.sceneManager.level.getLengthAtI(7)) {
-      this.x = this.sceneManager.Zerlin.x - cc.ZERLIN_POSITION_ON_SCREEN * this.width;
-    } else if (this.sceneManager.Zerlin.x - cc.ZERLIN_POSITION_ON_SCREEN * this.width < 0) {
-      this.x = 0;
-    // } else if (this.x > this.sceneManager.level.getLengthAtI(7)) {
-    //   console.log("edge of screen: " + this.x);
-    //   this.x = this.sceneManager.level.getLengthAtI(7);
+    // In multiplayer, track the midpoint between both players
+    var trackX = this.sceneManager.Zerlin.x;
+    if (this.sceneManager.multiplayerActive && this.sceneManager.Zerlin2) {
+      trackX = (this.sceneManager.Zerlin.x + this.sceneManager.Zerlin2.x) / 2;
     }
-    
-    
-    //console.log(this.x);
-    
+
+    if (trackX - cc.ZERLIN_POSITION_ON_SCREEN * this.width >= 0 &&
+        trackX <= this.sceneManager.level.getLengthAtI(7)) {
+      this.x = trackX - cc.ZERLIN_POSITION_ON_SCREEN * this.width;
+    } else if (trackX - cc.ZERLIN_POSITION_ON_SCREEN * this.width < 0) {
+      this.x = 0;
+    }
   }
 
   draw() {

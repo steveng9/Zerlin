@@ -732,13 +732,26 @@ class SceneManager2 {
 
 
   //________________________________________________________
-  // Stub — Phase 2 will implement full multiplayer training scene
   startMultiplayerTrainingScene() {
-    console.log('[Multiplayer] startMultiplayerTrainingScene called — stub (Phase 2)');
-    this.startTrainingGroundScene();
+    this.startTrainingGroundScene();  // set up P1, level, droids, etc.
+    this.multiplayerActive = true;
+
+    // Create P2
+    this.Zerlin2 = new Zerlin2(this.game, this.camera, this);
+    this.Zerlin2.maxHealth = 15;
+    this.Zerlin2.maxForce  = 15;
+    this.Zerlin2.setHealth();
+
+    // P2 status bars — mirrored to top-right of screen
+    var barLength = this.game.surfaceWidth * Constants.StatusBarConstants.STATUS_BAR_LENGTH;
+    var p2BarX = this.game.surfaceWidth - barLength - 25;
+    this.addEntity(new HealthStatusBarP2(this.game, this, p2BarX, 25));
+    this.addEntity(new ForceStatusBarP2(this.game, this, p2BarX, 50));
   }
 
   startTrainingGroundScene() {
+    this.multiplayerActive = false;
+    this.Zerlin2 = null;
     this.game.audio.campFire.stop();
     this.game.audio.endAllSoundFX();
     this.levelSceneTimer = 0;
@@ -824,6 +837,7 @@ class SceneManager2 {
 
     if (!this.paused) {
       this.Zerlin.update();
+      if (this.multiplayerActive && this.Zerlin2) this.Zerlin2.update();
       this.camera.update();
       // Call level.update() for tile physics and powerup spawning; droids managed by pool
       this.level.update();
@@ -901,7 +915,15 @@ class SceneManager2 {
       this.canPause = true;
     }
 
-    // On death: wait for death animation then restart training ground quickly
+    // P2 independent respawn (no full scene reset — just reset that player)
+    if (this.multiplayerActive && this.Zerlin2 && !this.Zerlin2.alive) {
+      if (this.levelSceneTimer > this.Zerlin2.timeOfDeath + this.Zerlin2.deathAnimation.totalTime + 1.5) {
+        this.Zerlin2.reset();
+        this.Zerlin2.setHealth();
+      }
+    }
+
+    // On P1 death: wait for death animation then restart training ground quickly
     if (!this.startedFinalOverlay && !this.Zerlin.alive) {
       this.canPause = false;
       if (this.levelSceneTimer > this.Zerlin.timeOfDeath + this.Zerlin.deathAnimation.totalTime) {
@@ -935,6 +957,7 @@ class SceneManager2 {
     this.camera.draw();
     this.level.draw();
     this.Zerlin.draw();
+    if (this.multiplayerActive && this.Zerlin2) this.Zerlin2.draw();
     for (var i = 0; i < this.droids.length; i++) {
       this.droids[i].draw(this.ctx);
     }

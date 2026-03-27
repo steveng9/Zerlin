@@ -707,6 +707,44 @@ class Zerlin extends Entity {
 
 
 
+// ── Player 2 ─────────────────────────────────────────────────────────────────
+// Identical physics/abilities to Zerlin, but input comes from the network
+// (game.network.lastReceivedInput) rather than local keyboard/mouse.
+class Zerlin2 extends Zerlin {
+  constructor(game, camera, sceneManager) {
+    super(game, camera, sceneManager);
+    // reset() is called inside super(); our override below re-positions to P2 spawn
+  }
+
+  reset() {
+    super.reset();
+    // Spawn 250px to the right of P1's spawn
+    this.x = this.game.surfaceWidth * camConst.ZERLIN_POSITION_ON_SCREEN + zc.Z_SPAWN_X + 250;
+    this.faceRight();
+  }
+
+  update() {
+    // Temporarily redirect all input reads to the last received network state.
+    // This covers both Zerlin.update() and Lightsaber.update() since they both
+    // read game.keys / game.mouse / game.click directly.
+    var savedKeys  = this.game.keys;
+    var savedMouse = this.game.mouse;
+    var savedClick = this.game.click;
+
+    var inp = this.game.network.lastReceivedInput;
+    this.game.keys  = inp.keys  || {};
+    this.game.mouse = { x: inp.mouseX != null ? inp.mouseX : savedMouse.x,
+                        y: inp.mouseY != null ? inp.mouseY : savedMouse.y };
+    this.game.click = inp.click || false;
+
+    super.update();
+
+    this.game.keys  = savedKeys;
+    this.game.mouse = savedMouse;
+    this.game.click = savedClick;
+  }
+}
+
 class Lightsaber extends Entity {
 
   constructor(game, Zerlin) {

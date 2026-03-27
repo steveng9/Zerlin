@@ -23,12 +23,12 @@ Branch: `multiplayer` (merge to `master` only when fully ironed out)
 
 ## Phases
 
-### Phase 1 — Networking scaffolding [ ]
-- [ ] Add PeerJS CDN to `index.html`
-- [ ] Write `js/NetworkManager.js` (host/join/send/receive)
-- [ ] Add lobby UI to `index.html` + `style.css`
-- [ ] Test: two browsers can connect and exchange messages
-- [ ] Commit: `multiplayer: Phase 1 - NetworkManager and lobby UI`
+### Phase 1 — Networking scaffolding [x]
+- [x] Add PeerJS CDN to `index.html`
+- [x] Write `js/NetworkManager.js` (host/join/send/receive)
+- [x] Add lobby UI to `index.html` + `style.css`
+- [x] Test: two browsers can connect and exchange messages
+- [x] Commit: `multiplayer: Phase 1 - NetworkManager and lobby UI`
 
 ### Phase 2 — Second player in local mode [ ]
 - [ ] Add `Zerlin2` class to `HeroEntities.js`
@@ -72,9 +72,9 @@ Branch: `multiplayer` (merge to `master` only when fully ironed out)
 ---
 
 ## Current Status
-- Branch `multiplayer` created
-- Plan written
-- **Next: Phase 1**
+- Phase 1 complete (committed `94c10b1`)
+- Phase 1 fully verified ✓
+- **Next: Phase 2** — Zerlin2 entity + dual-player training ground + midpoint camera
 
 ## Key Files to Touch
 - `index.html` — add PeerJS CDN, lobby UI
