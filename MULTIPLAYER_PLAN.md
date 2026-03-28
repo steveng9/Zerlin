@@ -30,14 +30,13 @@ Branch: `multiplayer` (merge to `master` only when fully ironed out)
 - [x] Test: two browsers can connect and exchange messages
 - [x] Commit: `multiplayer: Phase 1 - NetworkManager and lobby UI`
 
-### Phase 2 — Second player in local mode [ ]
-- [ ] Add `Zerlin2` class to `HeroEntities.js`
-  - Same physics as Zerlin, input from `network.lastReceivedInput` (or WASD locally for testing)
-  - Placeholder sprite (reuse Zerlin's until art is ready)
-  - Separate health bar (bottom-right)
-- [ ] SceneManager: create both players in training ground multiplayer mode
-- [ ] Camera: follow midpoint of both players
-- [ ] Commit: `multiplayer: Phase 2 - Zerlin2 entity and dual-player training ground`
+### Phase 2 — Second player in local mode [x]
+- [x] Add `Zerlin2` class to `HeroEntities.js`
+- [x] Placeholder sprite (reuses Zerlin's until P2 art is ready)
+- [x] P2 status bars (top-right of screen)
+- [x] SceneManager: create both players in training ground multiplayer mode
+- [x] Camera: follow midpoint of both players
+- [x] Commit: `multiplayer: Phase 2 - Zerlin2 entity and dual-player training ground`
 
 ### Phase 3 — Wire networking to game state [ ]
 - [ ] Snapshot serializer: pack world state (both players, droids, lasers, killCount)
@@ -74,7 +73,8 @@ Branch: `multiplayer` (merge to `master` only when fully ironed out)
 ## Current Status
 - Phase 1 complete (committed `94c10b1`)
 - Phase 1 fully verified ✓
-- **Next: Phase 2** — Zerlin2 entity + dual-player training ground + midpoint camera
+- Phase 2 complete (commit `b402820`) — needs visual test (open Multiplayer → connect → confirm two characters render)
+- **Next: Phase 3** — game state serialization + wire P2 input over WebRTC
 
 ## Key Files to Touch
 - `index.html` — add PeerJS CDN, lobby UI

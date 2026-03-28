@@ -747,6 +747,14 @@ class SceneManager2 {
     var p2BarX = this.game.surfaceWidth - barLength - 25;
     this.addEntity(new HealthStatusBarP2(this.game, this, p2BarX, 25));
     this.addEntity(new ForceStatusBarP2(this.game, this, p2BarX, 50));
+
+    // Networking
+    this.pendingSnapshot = null;
+    this.networkSnapshotTimer = 0;
+    if (!this.game.network.isHost) {
+      // Client: stash incoming snapshots for application at start of next update
+      this.game.network.onStateReceived = (snap) => { this.pendingSnapshot = snap; };
+    }
   }
 
   startTrainingGroundScene() {
@@ -836,7 +844,24 @@ class SceneManager2 {
     this.musicMenu.update();
 
     if (!this.paused) {
-      this.Zerlin.update();
+      // Client: apply authoritative positions from host BEFORE running local sim
+      if (this.multiplayerActive && this.Zerlin2 && !this.game.network.isHost && this.pendingSnapshot) {
+        this._applyPlayerFromSnapshot(this.Zerlin,  this.pendingSnapshot.p1);
+        this._applyPlayerFromSnapshot(this.Zerlin2, this.pendingSnapshot.p2);
+        this.pendingSnapshot = null;
+      }
+
+      // Client: Zerlin is P1's character — run update with empty input so animations
+      // and lightsaber position stay correct, but P2's keys don't move P1.
+      if (this.multiplayerActive && this.Zerlin2 && !this.game.network.isHost) {
+        var _sk = this.game.keys; var _sc = this.game.click;
+        this.game.keys = {}; this.game.click = null;
+        this.Zerlin.update();
+        this.game.keys = _sk; this.game.click = _sc;
+      } else {
+        this.Zerlin.update();
+      }
+
       if (this.multiplayerActive && this.Zerlin2) this.Zerlin2.update();
       this.camera.update();
       // Call level.update() for tile physics and powerup spawning; droids managed by pool
@@ -906,6 +931,26 @@ class SceneManager2 {
         this.sceneEntities[i].update();
         if (this.sceneEntities[i].removeFromWorld) {
           this.sceneEntities.splice(i, 1);
+        }
+      }
+
+      // ── Networking ──────────────────────────────────────────────────
+      if (this.multiplayerActive && this.Zerlin2) {
+        if (this.game.network.isHost) {
+          // Host: send authoritative player state to client at 20 Hz
+          this.networkSnapshotTimer -= this.game.clockTick;
+          if (this.networkSnapshotTimer <= 0) {
+            this.networkSnapshotTimer = 1 / 20;
+            this.game.network.sendGameState(this._buildPlayerSnapshot());
+          }
+        } else {
+          // Client: send local input to host every frame
+          this.game.network.sendInput({
+            keys:   this.game.keys,
+            mouseX: this.game.mouse ? this.game.mouse.x : 0,
+            mouseY: this.game.mouse ? this.game.mouse.y : 0,
+            click:  !!this.game.click,
+          });
         }
       }
     }
@@ -994,6 +1039,49 @@ class SceneManager2 {
       "TRAINING GROUND  |  Kills: " + this.trainingKills +
       "  |  Active: " + this.droids.length,
       25, 680);
+  }
+
+  // ── Multiplayer snapshot helpers ─────────────────────────────────────────
+
+  _buildPlayerSnapshot() {
+    return {
+      p1:    this._serializePlayer(this.Zerlin),
+      p2:    this._serializePlayer(this.Zerlin2),
+      kills: this.trainingKills,
+    };
+  }
+
+  _serializePlayer(z) {
+    return {
+      x: z.x, y: z.y,
+      deltaX: z.deltaX, deltaY: z.deltaY,
+      health: z.currentHealth,
+      force:  z.currentForce,
+      facingRight: z.facingRight,
+      alive:     z.alive,
+      direction: z.direction,
+      falling:   z.falling,
+      saberAngle: z.lightsaber ? z.lightsaber.angle : 0,
+    };
+  }
+
+  _applyPlayerFromSnapshot(zerlin, state) {
+    if (!state) return;
+    zerlin.x      = state.x;
+    zerlin.y      = state.y;
+    zerlin.deltaX = state.deltaX;
+    zerlin.deltaY = state.deltaY;
+    zerlin.currentHealth = state.health;
+    zerlin.currentForce  = state.force;
+    zerlin.direction = state.direction;
+    zerlin.falling   = state.falling;
+    if (zerlin.lightsaber) zerlin.lightsaber.angle = state.saberAngle;
+    // Sync facing direction (also recomputes bounding box)
+    if (state.facingRight !== zerlin.facingRight) {
+      state.facingRight ? zerlin.faceRight() : zerlin.faceLeft();
+    } else {
+      zerlin.updateBoundingBox();
+    }
   }
 
   setTrainingLaserSpeed(mult) {
