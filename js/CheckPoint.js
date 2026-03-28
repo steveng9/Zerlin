@@ -15,7 +15,7 @@ class CheckPoint extends Entity {
     constructor(game, x, y) {
         // y value is where it rests on platform
         super(game, x, y - 186);
-        this.animation = new Animation(game.assetManager.getAsset("img/checkpoint.png"), 0, 0, 64, 188, .1, 8, true, false, 1);
+        this.animation = new Animation(game.assetManager.getAsset("img/ui/checkpoint.png"), 0, 0, 64, 188, .1, 8, true, false, 1);
         this.boundingBox = new BoundingBox(this.x, this.y, this.animation.frameWidth, this.animation.frameHeight);
     }
 

@@ -127,6 +127,16 @@ class DroidLaser extends Entity {
 	}
 
 	update() {
+		if (this.ghost) {
+			// Dead-reckoning between snapshots: move linearly until next correction arrives
+			this.x     += this.deltaX * this.game.clockTick;
+			this.y     += this.deltaY * this.game.clockTick;
+			this.tailX += this.deltaX * this.game.clockTick;
+			this.tailY += this.deltaY * this.game.clockTick;
+			// Do NOT remove on screen exit — snapshot reconciliation owns ghost lifetime
+			return;
+		}
+
 		// keep track of previous position for collision detection
 		this.prevX = this.x;
 		this.prevY = this.y;
@@ -235,6 +245,12 @@ class HomingLaser extends DroidLaser {
 	}
 
 	update() {
+		if (this.ghost) {
+			// Suppress targeting on ghost: just use inherited dead-reckoning
+			super.update();
+			return;
+		}
+
 		if (this.targetDroid) {
 			var angle = this.getAngleToDroid(this.targetDroid);
 			this.deltaX = this.speed * -Math.cos(angle);
@@ -295,7 +311,7 @@ class DroidExplosion extends Entity {
 		this.scale = scale? scale * duc.EXPLOSION_SCALE : duc.EXPLOSION_SCALE;
 		this.volume = explosionVolume? explosionVolume : .15;
 		this.speed = speed? speed : duc.EXPLOSION_FRAME_SPEED;
-		var spritesheet = this.game.assetManager.getAsset("img/Explosion.png");
+		var spritesheet = this.game.assetManager.getAsset("img/enemies/Explosion.png");
 		this.animation = new Animation(spritesheet, 0, 0, 64, 64,
 				this.speed, 15, false, false, this.scale);
 

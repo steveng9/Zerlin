@@ -560,7 +560,7 @@ class Zerlin extends Entity {
 
 
   createAnimations() {
-    this.standFaceRightAnimation = new Animation(this.assetManager.getAsset("img/Zerlin standing.png"),
+    this.standFaceRightAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin standing.png"),
       0, 0,
       zc.Z_WIDTH,
       zc.Z_HEIGHT,
@@ -568,7 +568,7 @@ class Zerlin extends Entity {
       zc.Z_STANDING_FRAMES,
       true, false,
       zc.Z_SCALE);
-    this.standFaceLeftAnimation = new Animation(this.assetManager.getAsset("img/Zerlin standing left.png"),
+    this.standFaceLeftAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin standing left.png"),
       0, 0,
       zc.Z_WIDTH,
       zc.Z_HEIGHT,
@@ -576,7 +576,7 @@ class Zerlin extends Entity {
       zc.Z_STANDING_FRAMES,
       true, false,
       zc.Z_SCALE);
-    this.moveRightFaceRightAnimation = new Animation(this.assetManager.getAsset("img/Zerlin bobbing walking.png"),
+    this.moveRightFaceRightAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin bobbing walking.png"),
       0, 0,
       zc.Z_WIDTH,
       zc.Z_HEIGHT,
@@ -584,7 +584,7 @@ class Zerlin extends Entity {
       zc.Z_WALKING_FRAMES,
       true, false,
       zc.Z_SCALE);
-    this.moveRightFaceLeftAnimation = new Animation(this.assetManager.getAsset("img/Zerlin left backwards bobbing walking.png"),
+    this.moveRightFaceLeftAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin left backwards bobbing walking.png"),
       0, 0,
       zc.Z_WIDTH,
       zc.Z_HEIGHT,
@@ -592,7 +592,7 @@ class Zerlin extends Entity {
       zc.Z_WALKING_FRAMES,
       true, false,
       zc.Z_SCALE);
-    this.moveLeftFaceRightAnimation = new Animation(this.assetManager.getAsset("img/Zerlin backwards bobbing walking.png"),
+    this.moveLeftFaceRightAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin backwards bobbing walking.png"),
       0, 0,
       zc.Z_WIDTH,
       zc.Z_HEIGHT,
@@ -600,7 +600,7 @@ class Zerlin extends Entity {
       zc.Z_WALKING_FRAMES,
       true, false,
       zc.Z_SCALE);
-    this.moveLeftFaceLeftAnimation = new Animation(this.assetManager.getAsset("img/Zerlin left bobbing walking.png"),
+    this.moveLeftFaceLeftAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin left bobbing walking.png"),
       0, 0,
       zc.Z_WIDTH,
       zc.Z_HEIGHT,
@@ -608,14 +608,14 @@ class Zerlin extends Entity {
       zc.Z_WALKING_FRAMES,
       true, false,
       zc.Z_SCALE);
-    this.forceJumpAscentAnimation = new Animation(this.assetManager.getAsset("img/jump.png"),
+    this.forceJumpAscentAnimation = new Animation(this.assetManager.getAsset("img/hero/jump.png"),
       0, 0,
       zc.Z_JUMP_IMAGE_WIDTH,
       zc.Z_JUMP_IMAGE_HEIGHT,
       1, 1,
       true, false,
       zc.Z_SCALE);
-    this.fallingUpAnimation = new Animation(this.assetManager.getAsset("img/Zerlin falling up.png"),
+    this.fallingUpAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin falling up.png"),
       0, 0,
       zc.Z_WIDTH,
       zc.Z_HEIGHT,
@@ -623,7 +623,7 @@ class Zerlin extends Entity {
       zc.Z_FALLING_UP_FRAMES,
       true, false,
       zc.Z_SCALE);
-    this.fallingDownAnimation = new Animation(this.assetManager.getAsset("img/Zerlin falling down.png"),
+    this.fallingDownAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin falling down.png"),
       0, 0,
       zc.Z_WIDTH,
       zc.Z_HEIGHT,
@@ -631,7 +631,7 @@ class Zerlin extends Entity {
       zc.Z_FALLING_DOWN_FRAMES,
       true, false,
       zc.Z_SCALE);
-    this.fallingUpLeftAnimation = new Animation(this.assetManager.getAsset("img/Zerlin falling up left.png"),
+    this.fallingUpLeftAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin falling up left.png"),
       0, 0,
       zc.Z_WIDTH,
       zc.Z_HEIGHT,
@@ -639,7 +639,7 @@ class Zerlin extends Entity {
       zc.Z_FALLING_UP_FRAMES,
       true, false,
       zc.Z_SCALE);
-    this.fallingDownLeftAnimation = new Animation(this.assetManager.getAsset("img/Zerlin falling down left.png"),
+    this.fallingDownLeftAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin falling down left.png"),
       0, 0,
       zc.Z_WIDTH,
       zc.Z_HEIGHT,
@@ -647,7 +647,7 @@ class Zerlin extends Entity {
       zc.Z_FALLING_DOWN_FRAMES,
       true, false,
       zc.Z_SCALE);
-    this.somersaultingAnimation = new Animation(this.assetManager.getAsset("img/Zerlin somersault.png"),
+    this.somersaultingAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin somersault.png"),
       0, 0,
       zc.Z_SOMERSAULT_WIDTH,
       zc.Z_SOMERSAULT_HEIGHT,
@@ -655,7 +655,7 @@ class Zerlin extends Entity {
       zc.Z_SOMERSAULT_FRAMES,
       false, false,
       zc.Z_SCALE);
-    this.somersaultingLeftAnimation = new Animation(this.assetManager.getAsset("img/Zerlin left somersault.png"),
+    this.somersaultingLeftAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin left somersault.png"),
       0, 0,
       zc.Z_SOMERSAULT_WIDTH,
       zc.Z_SOMERSAULT_HEIGHT,
@@ -663,7 +663,7 @@ class Zerlin extends Entity {
       zc.Z_SOMERSAULT_FRAMES,
       false, false,
       zc.Z_SCALE);
-    this.slashingAnimation = new Animation(this.assetManager.getAsset("img/Zerlin slash.png"),
+    this.slashingAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin slash.png"),
       0, 0,
       zc.Z_SLASH_WIDTH,
       zc.Z_SLASH_HEIGHT,
@@ -671,7 +671,7 @@ class Zerlin extends Entity {
       zc.Z_SLASH_FRAMES,
       false, false,
       zc.Z_SCALE);
-    this.slashingLeftAnimation = new Animation(this.assetManager.getAsset("img/Zerlin slash left.png"),
+    this.slashingLeftAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin slash left.png"),
       0, 0,
       zc.Z_SLASH_WIDTH,
       zc.Z_SLASH_HEIGHT,
@@ -679,7 +679,7 @@ class Zerlin extends Entity {
       zc.Z_SLASH_FRAMES,
       false, false,
       zc.Z_SCALE);
-    this.crouchAnimation = new Animation(this.assetManager.getAsset("img/Zerlin crouch.png"),
+    this.crouchAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin crouch.png"),
       0, 0,
       zc.Z_WIDTH,
       zc.Z_HEIGHT,
@@ -687,7 +687,7 @@ class Zerlin extends Entity {
       1,
       true, false,
       zc.Z_SCALE);
-    this.crouchLeftAnimation = new Animation(this.assetManager.getAsset("img/Zerlin crouch left.png"),
+    this.crouchLeftAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin crouch left.png"),
       0, 0,
       zc.Z_WIDTH,
       zc.Z_HEIGHT,
@@ -696,7 +696,7 @@ class Zerlin extends Entity {
       true, false,
       zc.Z_SCALE);
     // constructor(spriteSheet, startX, startY, frameWidth, frameHeight, frameDuration, frames, loop, reverse, scale) {
-    this.deathAnimation = new Animation(this.assetManager.getAsset("img/Zerlin death.png"),
+    this.deathAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin death.png"),
       0, 0,
       zc.Z_DEATH_WIDTH,
       zc.Z_HEIGHT,
@@ -1213,12 +1213,12 @@ class Lightsaber extends Entity {
   }
 
   setUpSaberImages() {
-    this.faceRightUpSaberImage = this.assetManager.getAsset("img/saber up.png");
-    this.faceLeftUpSaberImage = this.assetManager.getAsset("img/saber up left.png");
-    this.faceRightDownSaberImage = this.assetManager.getAsset("img/saber down.png");
-    this.faceLeftDownSaberImage = this.assetManager.getAsset("img/saber down left.png");
-    this.faceRightThrowImage = this.assetManager.getAsset("img/throwing arm.png");
-    this.faceLeftThrowImage = this.assetManager.getAsset("img/throwing arm left.png");
+    this.faceRightUpSaberImage = this.assetManager.getAsset("img/hero/saber up.png");
+    this.faceLeftUpSaberImage = this.assetManager.getAsset("img/hero/saber up left.png");
+    this.faceRightDownSaberImage = this.assetManager.getAsset("img/hero/saber down.png");
+    this.faceLeftDownSaberImage = this.assetManager.getAsset("img/hero/saber down left.png");
+    this.faceRightThrowImage = this.assetManager.getAsset("img/hero/throwing arm.png");
+    this.faceLeftThrowImage = this.assetManager.getAsset("img/hero/throwing arm left.png");
   }
 }
 
@@ -1235,7 +1235,7 @@ class AirbornSaber extends Entity {
     this.width = zc.LS_AIRBORN_WIDTH * this.arm.Zerlin.scale;
     this.height = zc.LS_AIRBORN_HEIGHT * this.arm.Zerlin.scale;
     this.radius = this.width / 2;
-    this.animation = new Animation(this.game.assetManager.getAsset("img/airborn saber.png"), 0, 0,
+    this.animation = new Animation(this.game.assetManager.getAsset("img/hero/airborn saber.png"), 0, 0,
       zc.LS_AIRBORN_WIDTH, zc.LS_AIRBORN_HEIGHT, zc.LS_AIRBORN_FRAME_DURATION, zc.LS_AIRBORN_FRAMES, true, false, this.arm.Zerlin.scale);
     this.maxDistanceFromArm = 0;
   }

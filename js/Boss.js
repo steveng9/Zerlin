@@ -306,7 +306,7 @@ class Boss extends Entity {
 
 
 	createAnimations() {
-		this.flyRightAnimation = new Animation(this.assetManager.getAsset("img/boss flying.png"),
+		this.flyRightAnimation = new Animation(this.assetManager.getAsset("img/enemies/boss flying.png"),
 			0, 0,
 			bc.B_WIDTH,
 			bc.B_HEIGHT,
@@ -314,7 +314,7 @@ class Boss extends Entity {
 			bc.B_FLYING_FRAMES,
 			true, false,
 			bc.B_SCALE);
-		this.flyLeftAnimation = new Animation(this.assetManager.getAsset("img/boss flying left.png"),
+		this.flyLeftAnimation = new Animation(this.assetManager.getAsset("img/enemies/boss flying left.png"),
 			0, 0,
 			bc.B_WIDTH,
 			bc.B_HEIGHT,
@@ -322,7 +322,7 @@ class Boss extends Entity {
 			bc.B_FLYING_FRAMES,
 			true, false,
 			bc.B_SCALE);
-		this.fallRightAnimation = new Animation(this.assetManager.getAsset("img/boss falling.png"),
+		this.fallRightAnimation = new Animation(this.assetManager.getAsset("img/enemies/boss falling.png"),
 			0, 0,
 			bc.B_WIDTH,
 			bc.B_HEIGHT,
@@ -330,7 +330,7 @@ class Boss extends Entity {
 			bc.B_FALLING_FRAMES,
 			true, false,
 			bc.B_SCALE);
-		this.fallLeftAnimation = new Animation(this.assetManager.getAsset("img/boss falling left.png"),
+		this.fallLeftAnimation = new Animation(this.assetManager.getAsset("img/enemies/boss falling left.png"),
 			0, 0,
 			bc.B_WIDTH,
 			bc.B_HEIGHT,
@@ -472,8 +472,8 @@ class BeamCannon extends Entity {
 	}
 
 	setUpCannonImages() {
-		this.faceRightCannonImage = this.assetManager.getAsset("img/beam cannon.png");
-		this.faceLeftCannonImage = this.assetManager.getAsset("img/beam cannon left.png");
+		this.faceRightCannonImage = this.assetManager.getAsset("img/enemies/beam cannon.png");
+		this.faceLeftCannonImage = this.assetManager.getAsset("img/enemies/beam cannon left.png");
 	}
 
 }
@@ -598,7 +598,7 @@ class Bomb extends Entity {
 	constructor(game, startX, startY, deltaX, deltaY) {
 		super(game, startX, startY, deltaX, deltaY);
 		this.camera = this.game.sceneManager.camera;
-		this.animation = new Animation(this.game.assetManager.getAsset("img/bomb.png"), 
+		this.animation = new Animation(this.game.assetManager.getAsset("img/enemies/bomb.png"), 
 			0, 0, 204, 192, bc.BOMB_FRAME_DURATION, bc.FRAMES, false, false, bc.BOMB_SCALE);
 		this.boundingCircle = new BoundingCircle(this.x + (this.animation.frameWidth / 2 * bc.BOMB_SCALE), (this.y + this.animation.frameWidth / 2 * bc.BOMB_SCALE), this.animation.frameWidth / 2 * bc.BOMB_SCALE);
 	}

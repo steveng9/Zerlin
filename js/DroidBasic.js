@@ -70,6 +70,17 @@ class BasicDroid extends AbstractDroid {
     if (!this.sceneManager) {
       this.sceneManager = this.game.sceneManager;
     }
+
+    if (this.ghost) {
+      // Dead-reckoning between snapshots: keep moving at last-known velocity.
+      // Snapshot reconciliation in SceneManager owns position corrections and lifetime.
+      this.x += this.deltaX * this.game.clockTick;
+      this.y += this.deltaY * this.game.clockTick;
+      this.boundCircle.x += this.deltaX * this.game.clockTick;
+      this.boundCircle.y += this.deltaY * this.game.clockTick;
+      return;
+    }
+
     this.calcMovement();
 
     /* droid shooting */

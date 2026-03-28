@@ -62,6 +62,7 @@ Branch: `multiplayer` (merge to `master` only when fully ironed out)
 - [ ] Disconnect handling: pause + reconnect prompt
 - [x] Lobby: copy-to-clipboard button with "COPIED!" feedback (was already wired; added visual confirmation)
 - [x] Multiplayer entry point in cheat buttons bar (was already implemented)
+- [x] Entity sync: droids and lasers now fully synced host→client via snapshot (ghost pattern)
 - [ ] Commit: `multiplayer: Phase 5 - local prediction and UX polish`
 
 ### Phase 6 — P2 Sprites [ ]
@@ -79,7 +80,8 @@ Branch: `multiplayer` (merge to `master` only when fully ironed out)
 - Phase 2 complete ✓
 - Phase 3 complete (commit `e8ccb8e`); multiple bug-fix commits
 - Phase 3 fully verified ✓ — both players visible and synced across browsers
-- Phase 4 complete ✓ — **Next: Phase 5 polish**
+- Phase 4 complete ✓
+- Entity sync complete ✓ — droids and lasers ghost-synced; CollisionManager host-only in multiplayer — **Next: Phase 5 polish**
 - Bug fix: Z1's saber collision line on P2's screen was stale; fixed by calling `updateCollisionLine()` after angle override
 - Bug fix: Z2's saber collision line stale on host — `_applySnapshot` now calls `updateCollisionLine()`
 - Bug fix: Z1 saber throw, lightning, and orb not visible on P2's screen — synced via `airbornSaber` position, `totalLightningFired` counter, and `orbActive` flag

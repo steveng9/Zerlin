@@ -258,7 +258,7 @@ class BossHealthStatusBar extends AbstractStatusBar {
     this.maxSize = this.boss.maxHealth;
     this.current = this.boss.currentHealth;
 
-    this.image = this.game.assetManager.getAsset("img/boss_helmet.png");
+    this.image = this.game.assetManager.getAsset("img/enemies/boss_helmet.png");
   }
 
   setCurrent() {
@@ -298,7 +298,7 @@ class DroidBossHealthStatusBar extends AbstractStatusBar {
     this.maxSize = this.boss.maxHealth;
     this.current = this.boss.currentHealth;
 
-    this.image = this.game.assetManager.getAsset("img/boss_status_bar_icon.png");
+    this.image = this.game.assetManager.getAsset("img/enemies/boss_status_bar_icon.png");
   }
 
   setCurrent() {

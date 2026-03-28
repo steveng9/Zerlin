@@ -161,7 +161,7 @@ class InvincibilityPowerUp extends AbstractPowerUp {
 class HomingLaserPowerUp extends AbstractPowerUp {
   constructor(game, x, y) {
     super(game, x, y);
-    this.animation = new Animation(this.game.assetManager.getAsset('img/powerup_laser.png'), 0, 0, 165, 159, 0.15, 12, true, false, puc.LASER_IMAGE_SCALE);
+    this.animation = new Animation(this.game.assetManager.getAsset('img/ui/powerup_laser.png'), 0, 0, 165, 159, 0.15, 12, true, false, puc.LASER_IMAGE_SCALE);
 
     /* bounding circle */
     this.radius = (this.animation.frameWidth / 2) * this.animation.scale;
@@ -183,7 +183,7 @@ class HomingLaserPowerUp extends AbstractPowerUp {
 class SplitLaserPowerUp extends AbstractPowerUp {
   constructor(game, x, y) {
     super(game, x, y);
-    this.animation = new Animation(this.game.assetManager.getAsset('img/powerup_coin.png'), 0, 0, 126, 126, 0.1, 8, true, false, puc.COIN_IMAGE_SCALE);
+    this.animation = new Animation(this.game.assetManager.getAsset('img/ui/powerup_coin.png'), 0, 0, 126, 126, 0.1, 8, true, false, puc.COIN_IMAGE_SCALE);
 
     /* bounding circle */
     this.radius = (this.animation.frameWidth / 2) * this.animation.scale;
@@ -208,7 +208,7 @@ class SplitLaserPowerUp extends AbstractPowerUp {
 class TinyModePowerUp extends AbstractPowerUp {
   constructor(game, x, y) {
     super(game, x, y);
-    this.animation = new Animation(this.game.assetManager.getAsset('img/powerup_coin_T.png'), 0, 0, 126, 126, 0.1, 8, true, false, puc.COIN_IMAGE_SCALE);
+    this.animation = new Animation(this.game.assetManager.getAsset('img/ui/powerup_coin_T.png'), 0, 0, 126, 126, 0.1, 8, true, false, puc.COIN_IMAGE_SCALE);
 
     /* bounding circle */
     this.radius = (this.animation.frameWidth / 2) * this.animation.scale;

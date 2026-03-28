@@ -51,9 +51,9 @@ class SceneManager2 {
     this.canPause = false;
     this.pauseScreen = new PauseScreen(this.game);
     this.musicMenu = new MusicMenu(this.game, 1050, 50, [
-      this.game.assetManager.getAsset('img/music_menu.png'),
-      this.game.assetManager.getAsset('img/music_menu_xmusic.png'),
-      this.game.assetManager.getAsset('img/music_menu_xfx.png')
+      this.game.assetManager.getAsset('img/ui/music_menu.png'),
+      this.game.assetManager.getAsset('img/ui/music_menu_xmusic.png'),
+      this.game.assetManager.getAsset('img/ui/music_menu_xfx.png')
     ]);
   }
 
@@ -65,76 +65,76 @@ class SceneManager2 {
 
   buildLevels() {
     var LEVEL_ONE_BACKGROUNDS = [
-      new ParallaxScrollBackground(this.game, this, 'img/backgroundTrees4.png', 1, 5200),
-      new ParallaxFloatingBackground(this.game, this, 'img/backgroundStars3.png', 1, 5000, 0),
-      new ParallaxGodLightBackground(this.game, this, 'img/god light new 3.png', 4500),
-      new ParallaxScrollBackground(this.game, this, 'img/backgroundTrees3.png', 1, 2500),
-      new ParallaxBirdBackground(this.game, this, 'img/dagobah bat.png', .17, false, 200, 500),
-      new ParallaxBirdBackground(this.game, this, 'img/dagobah bat left.png', .45, true, 1300, 500),
-      new ParallaxBirdBackground(this.game, this, 'img/dagobah bat.png', .3, false, 2300, 500),
-      new ParallaxGodLightBackground(this.game, this, 'img/god light new 2.png', 1900),
-      new ParallaxFloatingBackground(this.game, this, 'img/backgroundStars1.png', 1, 1650, Math.PI/2),
-      new ParallaxScrollBackground(this.game, this, 'img/backgroundTrees2.png', 1, 1000),
-      new ParallaxGodLightBackground(this.game, this, 'img/god light new 1.png', 800),
-      new ParallaxFloatingBackground(this.game, this, 'img/backgroundStars2.png', 1, 800, Math.PI*1.2),
-      new ParallaxScrollBackground(this.game, this, 'img/backgroundTrees1.png', 1, 600),
+      new ParallaxScrollBackground(this.game, this, 'img/levels/dagobah/backgroundTrees4.png', 1, 5200),
+      new ParallaxFloatingBackground(this.game, this, 'img/levels/dagobah/backgroundStars3.png', 1, 5000, 0),
+      new ParallaxGodLightBackground(this.game, this, 'img/levels/dagobah/god light new 3.png', 4500),
+      new ParallaxScrollBackground(this.game, this, 'img/levels/dagobah/backgroundTrees3.png', 1, 2500),
+      new ParallaxBirdBackground(this.game, this, 'img/enemies/dagobah bat.png', .17, false, 200, 500),
+      new ParallaxBirdBackground(this.game, this, 'img/enemies/dagobah bat left.png', .45, true, 1300, 500),
+      new ParallaxBirdBackground(this.game, this, 'img/enemies/dagobah bat.png', .3, false, 2300, 500),
+      new ParallaxGodLightBackground(this.game, this, 'img/levels/dagobah/god light new 2.png', 1900),
+      new ParallaxFloatingBackground(this.game, this, 'img/levels/dagobah/backgroundStars1.png', 1, 1650, Math.PI/2),
+      new ParallaxScrollBackground(this.game, this, 'img/levels/dagobah/backgroundTrees2.png', 1, 1000),
+      new ParallaxGodLightBackground(this.game, this, 'img/levels/dagobah/god light new 1.png', 800),
+      new ParallaxFloatingBackground(this.game, this, 'img/levels/dagobah/backgroundStars2.png', 1, 800, Math.PI*1.2),
+      new ParallaxScrollBackground(this.game, this, 'img/levels/dagobah/backgroundTrees1.png', 1, 600),
     ];
     var LEVEL_ONE_TILES = {
-      centerTile: 'img/forest_center_tile.png',
-      leftTile: 'img/forest_left_tile.png',
-      rightTile: 'img/forest_right_tile.png',
-      leftRightTile: 'img/forest_both_rounded_tile.png'
+      centerTile: 'img/levels/dagobah/forest_center_tile.png',
+      leftTile: 'img/levels/dagobah/forest_left_tile.png',
+      rightTile: 'img/levels/dagobah/forest_right_tile.png',
+      leftRightTile: 'img/levels/dagobah/forest_both_rounded_tile.png'
     };
 
     var CITY_LEVEL_BACKGROUNDS = [
-      new ParallaxScrollBackground(this.game, this, 'img/city_background.png', 1, 5200),
-      new ParallaxFloatingBackground(this.game, this, 'img/city_clouds2.png', 1, 8000, Math.PI*.67),
-      new ParallaxScrollBackground(this.game, this, 'img/city_buildings_back.png', 1, 2500),
-      new ParallaxHoverHighwayBackground(this.game, this, 'img/highway layer 2.png', 4000, false),
-      new ParallaxHoverHighwayBackground(this.game, this, 'img/highway layer 2 right.png', 4000, true),
-      new ParallaxScrollBackground(this.game, this, 'img/city_buildings_middle.png', 1, 1400),
-      new ParallaxHoverHighwayBackground(this.game, this, 'img/highway layer 1.png', 1000, false),
-      new ParallaxHoverHighwayBackground(this.game, this, 'img/highway layer 1 right.png', 1000, true),
-      new ParallaxScrollBackground(this.game, this, 'img/city_buildings_foreground.png', 1, 1000),
-      new ParallaxHoverHighwayBackground(this.game, this, 'img/highway layer 3.png', 350, false),
-      new ParallaxHoverHighwayBackground(this.game, this, 'img/highway layer 3 right.png', 350, true),
-      new ParallaxFloatingBackground(this.game, this, 'img/city_clouds_left.png', 1, 1000, 0),
-      new ParallaxFloatingBackground(this.game, this, 'img/city_clouds_center.png', 1, 800, Math.PI*1.33)
+      new ParallaxScrollBackground(this.game, this, 'img/levels/coruscant/city_background.png', 1, 5200),
+      new ParallaxFloatingBackground(this.game, this, 'img/levels/coruscant/city_clouds2.png', 1, 8000, Math.PI*.67),
+      new ParallaxScrollBackground(this.game, this, 'img/levels/coruscant/city_buildings_back.png', 1, 2500),
+      new ParallaxHoverHighwayBackground(this.game, this, 'img/levels/coruscant/highway layer 2.png', 4000, false),
+      new ParallaxHoverHighwayBackground(this.game, this, 'img/levels/coruscant/highway layer 2 right.png', 4000, true),
+      new ParallaxScrollBackground(this.game, this, 'img/levels/coruscant/city_buildings_middle.png', 1, 1400),
+      new ParallaxHoverHighwayBackground(this.game, this, 'img/levels/coruscant/highway layer 1.png', 1000, false),
+      new ParallaxHoverHighwayBackground(this.game, this, 'img/levels/coruscant/highway layer 1 right.png', 1000, true),
+      new ParallaxScrollBackground(this.game, this, 'img/levels/coruscant/city_buildings_foreground.png', 1, 1000),
+      new ParallaxHoverHighwayBackground(this.game, this, 'img/levels/coruscant/highway layer 3.png', 350, false),
+      new ParallaxHoverHighwayBackground(this.game, this, 'img/levels/coruscant/highway layer 3 right.png', 350, true),
+      new ParallaxFloatingBackground(this.game, this, 'img/levels/coruscant/city_clouds_left.png', 1, 1000, 0),
+      new ParallaxFloatingBackground(this.game, this, 'img/levels/coruscant/city_clouds_center.png', 1, 800, Math.PI*1.33)
     ];
     var CITY_LEVEL_TILES = {
-      centerTile: 'img/city_tile_center.png',
-      leftTile: 'img/city_tile_left.png',
-      rightTile: 'img/city_tile_right.png',
-      leftRightTile: 'img/city_tile_left_right.png'
+      centerTile: 'img/levels/coruscant/city_tile_center.png',
+      leftTile: 'img/levels/coruscant/city_tile_left.png',
+      rightTile: 'img/levels/coruscant/city_tile_right.png',
+      leftRightTile: 'img/levels/coruscant/city_tile_left_right.png'
     };
 
     var LEVEL_THREE_BACKGROUNDS = [
-      new ParallaxScrollBackground(this.game, this, 'img/snow level 0.png', 1, 6000),
-      new ParallaxScrollBackground(this.game, this, 'img/snow level 1.png', 1, 4500),
-      new ParallaxScrollBackground(this.game, this, 'img/snow level 2.png', 1, 3000),
-      new ParallaxScrollBackground(this.game, this, 'img/snow level 3.png', 1, 1500),
+      new ParallaxScrollBackground(this.game, this, 'img/levels/hoth/snow level 0.png', 1, 6000),
+      new ParallaxScrollBackground(this.game, this, 'img/levels/hoth/snow level 1.png', 1, 4500),
+      new ParallaxScrollBackground(this.game, this, 'img/levels/hoth/snow level 2.png', 1, 3000),
+      new ParallaxScrollBackground(this.game, this, 'img/levels/hoth/snow level 3.png', 1, 1500),
       new ParallaxSnowBackground(this.game, this, 2300),
       new ParallaxSnowBackground(this.game, this, 2200),
       new ParallaxSnowBackground(this.game, this, 2100),
       new ParallaxSnowBackground(this.game, this, 1800),
-      new ParallaxScrollBackground(this.game, this, 'img/snow level 4.png', 1, 1000),
+      new ParallaxScrollBackground(this.game, this, 'img/levels/hoth/snow level 4.png', 1, 1000),
       new ParallaxSnowBackground(this.game, this, 1500),
       new ParallaxSnowBackground(this.game, this, 1300),
       new ParallaxSnowBackground(this.game, this, 1100),
       new ParallaxSnowBackground(this.game, this, 1000),
-      new ParallaxScrollBackground(this.game, this, 'img/snow level 5.png', 1, 500),
+      new ParallaxScrollBackground(this.game, this, 'img/levels/hoth/snow level 5.png', 1, 500),
       new ParallaxSnowBackground(this.game, this, 800),
       new ParallaxSnowBackground(this.game, this, 700),
-      new ParallaxScrollBackground(this.game, this, 'img/snow level 6.png', 1, 250),
+      new ParallaxScrollBackground(this.game, this, 'img/levels/hoth/snow level 6.png', 1, 250),
       new ParallaxSnowBackground(this.game, this, 600),
       new ParallaxSnowBackground(this.game, this, 500),
       new ParallaxSnowBackground(this.game, this, 400)
     ];
     var LEVEL_THREE_TILES = {
-      centerTile: 'img/ice_tile_center.png',
-      leftTile: 'img/ice_tile_left.png',
-      rightTile: 'img/ice_tile_right.png',
-      leftRightTile: 'img/ice_tile_left_right.png'
+      centerTile: 'img/levels/hoth/ice_tile_center.png',
+      leftTile: 'img/levels/hoth/ice_tile_left.png',
+      rightTile: 'img/levels/hoth/ice_tile_right.png',
+      leftRightTile: 'img/levels/hoth/ice_tile_left_right.png'
     };
 
     this.levels = [];
@@ -169,6 +169,7 @@ class SceneManager2 {
 
   addLaser(laser) {
     // console.log('added laser');
+    if (!laser.id) laser.id = this._nextEntityId++;
     this.lasers.push(laser);
     // this.otherEntities.push(laser);
   }
@@ -223,16 +224,16 @@ class SceneManager2 {
     this.update = this.openingSceneUpdate;
     this.draw = this.openingSceneDraw;
     this.sceneEntities = [];
-    this.sceneEntities.push(new ParallaxRotatingBackground(this.game, this, 'img/opening stars.png', 1, 15000));
-    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/opening oasis 6.png', 1, 15000, 0, -50));
-    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/opening oasis 5.png', 1, 9500, 0, 30));
-    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/opening oasis 4.png', 1, 6000, 0, -20));
-    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/opening oasis 3.png', 1, 2400, 0, -20));
-    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/opening oasis 2.png', 1, 1300, 0, -265));
-    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/opening oasis 1.png', 1, 900, 0, -170));
+    this.sceneEntities.push(new ParallaxRotatingBackground(this.game, this, 'img/levels/opening/opening stars.png', 1, 15000));
+    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/levels/opening/opening oasis 6.png', 1, 15000, 0, -50));
+    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/levels/opening/opening oasis 5.png', 1, 9500, 0, 30));
+    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/levels/opening/opening oasis 4.png', 1, 6000, 0, -20));
+    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/levels/opening/opening oasis 3.png', 1, 2400, 0, -20));
+    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/levels/opening/opening oasis 2.png', 1, 1300, 0, -265));
+    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/levels/opening/opening oasis 1.png', 1, 900, 0, -170));
     //constructor(spriteSheet, startX, startY, frameWidth, frameHeight, frameDuration, frames, loop, reverse, scale) {
     this.sceneEntities.push(new ParallaxAnimatedBackground(this.game, this,
-      new Animation(this.game.assetManager.getAsset('img/zerlin at fire.png'), 0, 0, 600, 600, .125, 6, true, false, .5),
+      new Animation(this.game.assetManager.getAsset('img/hero/zerlin at fire.png'), 0, 0, 600, 600, .125, 6, true, false, .5),
       1, 800, 470, 450));
     this.sceneEntities.push(new Overlay(this.game, true, smc.OPENING_OVERLAY_TIME));
     this.game.audio.playSoundFx(this.game.audio.campFire);
@@ -294,7 +295,7 @@ class SceneManager2 {
       this.sequence = 3;
       this.sceneEntities.push(new TextScreen(this.game, "", "white"));
       this.sceneEntities.push(new ParallaxAnimatedBackground(this.game, this,
-        new Animation(this.game.assetManager.getAsset('img/title.png'), 0, 0, 1026, 342, .145, 66, false, false, .5),
+        new Animation(this.game.assetManager.getAsset('img/ui/title.png'), 0, 0, 1026, 342, .145, 66, false, false, .5),
         1, 200, (this.game.surfaceWidth - 1026 * .5) / 2, (this.game.surfaceHeight - 342 * .5) / 2));
       this.sceneEntities.push(new Overlay(this.game, true, smc.OPENING_OVERLAY_TIME * .8));
     } else if (!this.seq3FadingOut && this.openingSceneTimer > this.seq3EndTime - smc.OPENING_OVERLAY_TIME) {
@@ -311,7 +312,7 @@ class SceneManager2 {
       // this.sceneEntities.pop(); // remove previous title animation
       this.camera.x = 1400;
       this.sceneEntities.push(new ParallaxAnimatedBackground(this.game, this,
-        new Animation(this.game.assetManager.getAsset('img/ship take off.png'), 0, 0, 600, 600, .18, 38, false, false, 1.5),
+        new Animation(this.game.assetManager.getAsset('img/effects/ship take off.png'), 0, 0, 600, 600, .18, 38, false, false, 1.5),
         1, 800, 470, -150));
       this.sceneEntities.push(new Overlay(this.game, true, smc.OPENING_OVERLAY_TIME));
     } else if (this.sequence == 4) {
@@ -332,7 +333,7 @@ class SceneManager2 {
       if (!this.addedTwinkleStar && this.seq4CameraPanTimer > 4.7) {
         this.addedTwinkleStar = true;
         this.sceneEntities.push(new ParallaxAnimatedBackground(this.game, this,
-          new Animation(this.game.assetManager.getAsset('img/twinkling star.png'), 0, 0, 64, 64, .05, 14, false, false, .9),
+          new Animation(this.game.assetManager.getAsset('img/effects/twinkling star.png'), 0, 0, 64, 64, .05, 14, false, false, .9),
           1, 99999999, 964, 95));
       }
 
@@ -779,6 +780,8 @@ class SceneManager2 {
 
     this.level = this.trainingLevel;
     this.checkPoint = new CheckPoint(this.game, this.camera.width * cc.ZERLIN_POSITION_ON_SCREEN, 0);
+    this._nextEntityId = 1;
+    this.powerupRespawnQueue = [];
     this.droids = [];
     this.lasers = [];
     this.powerups = [];
@@ -954,6 +957,8 @@ class SceneManager2 {
       if (this.multiplayerActive && this.Zerlin2 && !this.game.network.isHost && this.pendingSnapshot) {
         this._applyPlayerFromSnapshot(this.Zerlin,  this.pendingSnapshot.p1);
         this._applyPlayerFromSnapshot(this.Zerlin2, this.pendingSnapshot.p2);
+        this._applyEntitySnapshot(this.pendingSnapshot);
+        if (this.pendingSnapshot.kills !== undefined) this.trainingKills = this.pendingSnapshot.kills;
         this.pendingSnapshot = null;
       }
 
@@ -962,18 +967,25 @@ class SceneManager2 {
       // Call level.update() for tile physics and powerup spawning; droids managed by pool
       this.level.update();
 
-      // Staggered droid spawning — refill pool silently when exhausted
-      if (this.trainingDroidPool.length === 0 && this.enabledDroidTypes.size > 0) {
-        this.level.set();
-        this.trainingDroidPool = this.level.unspawnedDroids.filter(d => this.enabledDroidTypes.has(d.constructor.name));
-        this.level.unspawnedDroids = [];
-      }
-      this.trainingSpawnTimer -= this.game.clockTick;
-      if (this.trainingSpawnTimer <= 0
-          && this.droids.length < this.trainingTargetDroids
-          && this.trainingDroidPool.length > 0) {
-        this.trainingSpawnTimer = 0.5;
-        this.droids.push(this.trainingDroidPool.pop());
+      // Staggered droid spawning — host-authoritative; client receives droids via snapshot
+      if (!this.multiplayerActive || this.game.network.isHost) {
+        if (this.trainingDroidPool.length === 0 && this.enabledDroidTypes.size > 0) {
+          this.level.set();
+          this.trainingDroidPool = this.level.unspawnedDroids.filter(d => this.enabledDroidTypes.has(d.constructor.name));
+          this.level.unspawnedDroids = [];
+          // Powerups are managed separately (respawn-on-grab); don't re-spawn them
+          // when the droid pool refills or tokens will build up in the same spot.
+          this.level.unspawnedPowerups = [];
+        }
+        this.trainingSpawnTimer -= this.game.clockTick;
+        if (this.trainingSpawnTimer <= 0
+            && this.droids.length < this.trainingTargetDroids
+            && this.trainingDroidPool.length > 0) {
+          this.trainingSpawnTimer = 0.5;
+          var spawnedDroid = this.trainingDroidPool.pop();
+          spawnedDroid.id = this._nextEntityId++;
+          this.droids.push(spawnedDroid);
+        }
       }
 
       for (var i = this.droids.length - 1; i >= 0; i--) {
@@ -992,9 +1004,31 @@ class SceneManager2 {
       for (var i = this.powerups.length - 1; i >= 0; i--) {
         this.powerups[i].update();
         if (this.powerups[i].removeFromWorld) {
+          var pu = this.powerups[i];
+          // Tokens that were never grabbed disappear quietly; grabbed tokens
+          // respawn at their home position after a fixed delay.
+          if (pu.wasPickedUp) {
+            this.powerupRespawnQueue.push({
+              type: pu.constructor.name,
+              x: pu.x,
+              y: pu.startY,
+              respawnAt: this.levelSceneTimer + smc.POWERUP_RESPAWN_DELAY,
+            });
+          }
           this.powerups.splice(i, 1);
         }
       }
+
+      // Re-materialize picked-up powerups after the configured delay
+      for (var i = this.powerupRespawnQueue.length - 1; i >= 0; i--) {
+        if (this.levelSceneTimer >= this.powerupRespawnQueue[i].respawnAt) {
+          var entry = this.powerupRespawnQueue[i];
+          var respawned = this._createTrainingPowerup(entry.type, entry.x, entry.y);
+          if (respawned) this.powerups.push(respawned);
+          this.powerupRespawnQueue.splice(i, 1);
+        }
+      }
+
       for (var i = this.activePowerups.length - 1; i >= 0; i--) {
         this.activePowerups[i].update(i);
         if (this.activePowerups[i].removeFromWorld) {
@@ -1149,10 +1183,140 @@ class SceneManager2 {
 
   _buildPlayerSnapshot() {
     return {
-      p1:    this._serializePlayer(this.Zerlin),
-      p2:    this._serializePlayer(this.Zerlin2),
-      kills: this.trainingKills,
+      p1:     this._serializePlayer(this.Zerlin),
+      p2:     this._serializePlayer(this.Zerlin2),
+      kills:  this.trainingKills,
+      droids: this.droids.map(d => this._serializeDroid(d)),
+      lasers: this.lasers.map(l => this._serializeLaser(l)),
     };
+  }
+
+  _serializeDroid(d) {
+    return {
+      id:   d.id,
+      type: d.constructor.name,
+      x: d.x, y: d.y,
+      deltaX: d.deltaX, deltaY: d.deltaY,
+      bcx: d.boundCircle.x, bcy: d.boundCircle.y,
+    };
+  }
+
+  _serializeLaser(l) {
+    return {
+      id:   l.id,
+      x: l.x, y: l.y,
+      tailX: l.tailX, tailY: l.tailY,
+      deltaX: l.deltaX, deltaY: l.deltaY,
+      isDeflected: l.isDeflected,
+      poisoned:    l.poisoned,
+      color: l.color, deflectedColor: l.deflectedColor,
+      width: l.width, length: l.length,
+    };
+  }
+
+  /**
+   * Client-side: reconcile local ghost droids and lasers against the authoritative
+   * host snapshot.  New entities are created, existing ones get position corrections,
+   * and entities absent from the snapshot are removed (with a visual explosion for
+   * droids so their death registers on the client screen).
+   */
+  _applyEntitySnapshot(snap) {
+    // ── DROIDS ──────────────────────────────────────────────────────────────
+    var snapDroids = snap.droids || [];
+    var snapDroidMap = new Map(snapDroids.map(d => [d.id, d]));
+
+    // Remove locals not in snapshot → droid died on host
+    for (var i = this.droids.length - 1; i >= 0; i--) {
+      var ld = this.droids[i];
+      if (!snapDroidMap.has(ld.id)) {
+        var cx = ld.x + (ld.animation ? ld.animation.scale * ld.animation.frameWidth  / 2 : 0);
+        var cy = ld.y + (ld.animation ? ld.animation.scale * ld.animation.frameHeight / 2 : 0);
+        this.otherEntities.push(new DroidExplosion(this.game, cx, cy));
+        this.droids.splice(i, 1);
+      }
+    }
+
+    var localDroidMap = new Map(this.droids.map(d => [d.id, d]));
+
+    for (var sd of snapDroids) {
+      var existingDroid = localDroidMap.get(sd.id);
+      if (existingDroid) {
+        // Position correction
+        existingDroid.x = sd.x; existingDroid.y = sd.y;
+        existingDroid.deltaX = sd.deltaX; existingDroid.deltaY = sd.deltaY;
+        existingDroid.boundCircle.x = sd.bcx; existingDroid.boundCircle.y = sd.bcy;
+      } else {
+        var ghostDroid = this._getGhostDroidFromPool(sd.type);
+        if (ghostDroid) {
+          ghostDroid.id = sd.id;
+          ghostDroid.ghost = true;
+          ghostDroid.sceneManager = this;
+          ghostDroid.x = sd.x; ghostDroid.y = sd.y;
+          ghostDroid.deltaX = sd.deltaX; ghostDroid.deltaY = sd.deltaY;
+          ghostDroid.boundCircle.x = sd.bcx; ghostDroid.boundCircle.y = sd.bcy;
+          this.droids.push(ghostDroid);
+        }
+      }
+    }
+
+    // ── LASERS ──────────────────────────────────────────────────────────────
+    var snapLasers = snap.lasers || [];
+    var snapLaserMap = new Map(snapLasers.map(l => [l.id, l]));
+
+    // Remove locals not in snapshot → laser left screen or was consumed
+    for (var i = this.lasers.length - 1; i >= 0; i--) {
+      if (!snapLaserMap.has(this.lasers[i].id)) {
+        this.lasers.splice(i, 1);
+      }
+    }
+
+    var localLaserMap = new Map(this.lasers.map(l => [l.id, l]));
+
+    for (var sl of snapLasers) {
+      var existingLaser = localLaserMap.get(sl.id);
+      if (existingLaser) {
+        // Position correction + state sync
+        existingLaser.x = sl.x; existingLaser.y = sl.y;
+        existingLaser.tailX = sl.tailX; existingLaser.tailY = sl.tailY;
+        existingLaser.deltaX = sl.deltaX; existingLaser.deltaY = sl.deltaY;
+        existingLaser.isDeflected = sl.isDeflected;
+        existingLaser.poisoned = sl.poisoned;
+      } else {
+        // Create ghost laser; use DroidLaser for all types — homing behavior is host-only
+        var ghostLaser = DroidLaser.angleConstructor(
+          this.game,
+          sl.x, sl.y, 1,
+          Math.atan2(sl.deltaY, sl.deltaX),
+          sl.length, sl.width, sl.color, sl.deflectedColor
+        );
+        ghostLaser.id = sl.id;
+        ghostLaser.ghost = true;
+        ghostLaser.x = sl.x; ghostLaser.y = sl.y;
+        ghostLaser.tailX = sl.tailX; ghostLaser.tailY = sl.tailY;
+        ghostLaser.deltaX = sl.deltaX; ghostLaser.deltaY = sl.deltaY;
+        ghostLaser.isDeflected = sl.isDeflected;
+        ghostLaser.poisoned = sl.poisoned;
+        this.lasers.push(ghostLaser);
+      }
+    }
+  }
+
+  /**
+   * Retrieve a pre-built droid of the requested type from the client's pool
+   * (used exclusively for creating ghost copies on the client machine).
+   * Replenishes the pool automatically if depleted.
+   */
+  _getGhostDroidFromPool(type) {
+    // Replenish if we've run dry
+    if (this.trainingDroidPool.findIndex(d => d.constructor.name === type) === -1) {
+      this.level.set();
+      var fresh = this.level.unspawnedDroids;
+      this.level.unspawnedDroids = [];
+      this.trainingDroidPool = this.trainingDroidPool.concat(fresh);
+    }
+    var idx = this.trainingDroidPool.findIndex(d => d.constructor.name === type);
+    if (idx === -1) return null;
+    return this.trainingDroidPool.splice(idx, 1)[0];
   }
 
   _serializePlayer(z) {
@@ -1300,7 +1464,7 @@ class PauseScreen {
     //draw each control on the left
 
     //draw jump control
-    var image = this.game.assetManager.getAsset('img/jump.png');
+    var image = this.game.assetManager.getAsset('img/hero/jump.png');
     ctx.drawImage(image, 50, 10, 35, 35 * image.height/image.width);
     ctx.textAlign = "left";
     ctx.font = "22px " + smc.GAME_FONT;
@@ -1308,33 +1472,33 @@ class PauseScreen {
     ctx.fillText("Force Jump: Shift + W", 100, 70)
 
     //draw roll control
-    image = this.game.assetManager.getAsset('img/roll.png');
+    image = this.game.assetManager.getAsset('img/hero/roll.png');
     ctx.drawImage(image, 40, 125, 50, 50 * image.height/image.width);
     ctx.fillText("Left Roll: A + S", 100, 140);
     ctx.fillText("Right Roll: D + S", 100, 170);
 
     //draw slash control
-    image = this.game.assetManager.getAsset('img/slash.png');
+    image = this.game.assetManager.getAsset('img/hero/slash.png');
     ctx.drawImage(image, 40, 200, 50, 50 * image.height/image.width);
     ctx.fillText("Slash: Spacebar", 100, 250);
 
     //draw crouch control
-    image = this.game.assetManager.getAsset('img/crouch.png');
+    image = this.game.assetManager.getAsset('img/hero/crouch.png');
     ctx.drawImage(image, 40, 300, 40, 40 * image.height/image.width);
     ctx.fillText("Crouch: X", 100, 340);
 
     //draw flip lightsaber control
-    image = this.game.assetManager.getAsset('img/flip_saber.png');
+    image = this.game.assetManager.getAsset('img/hero/flip_saber.png');
     ctx.drawImage(image, 35, 390, 50, 50 * image.height/image.width);
     ctx.fillText("Flip Saber: Right Click", 100, 410);
 
     //draw throw saber control
-    image = this.game.assetManager.getAsset('img/saber_throw.png');
+    image = this.game.assetManager.getAsset('img/hero/saber_throw.png');
     ctx.drawImage(image, 35, 470, 50, 50 * image.height/image.width);
     ctx.fillText("Throw Saber: Left Click", 100, 495);
 
     //draw lightning control
-    image = this.game.assetManager.getAsset('img/lightning.png');
+    image = this.game.assetManager.getAsset('img/hero/lightning.png');
     ctx.drawImage(image, 35, 530, 50, 50 * image.height/image.width);
     ctx.fillText("Force Lightning: Shift + LeftClick", 100, 550);
     ctx.fillText("(Hold to Charge)", 100, 570);
@@ -1350,49 +1514,72 @@ class PauseScreen {
     ctx.textAlign = "left";
 
     //draw the Health powerup
-    var spritesheet = this.game.assetManager.getAsset('img/powerup_health.png');
+    var spritesheet = this.game.assetManager.getAsset('img/ui/powerup_health.png');
     var animation = new Animation(spritesheet, 0, 0, 32, 32, 0.1, 5, true, false, 3);
     animation.drawFrame(this.game.clockTick, ctx, 700, 10);
     ctx.fillText("Health: Fully Heals Zerlin", 800, 60);
 
     //draw the force powerup
-    spritesheet = this.game.assetManager.getAsset('img/powerup_force.png');
+    spritesheet = this.game.assetManager.getAsset('img/ui/powerup_force.png');
     animation = new Animation(spritesheet, 0, 0, 32, 32, 0.1, 9, true, false, 3);
     animation.drawFrame(this.game.clockTick, ctx, 700, 110);
     ctx.fillText("Force: Fully Recover Force Power", 800, 160);
 
     //draw the invincibility powerup
-    spritesheet = this.game.assetManager.getAsset('img/powerup_invincibility.png');
+    spritesheet = this.game.assetManager.getAsset('img/ui/powerup_invincibility.png');
     animation = new Animation(spritesheet, 0, 0, 32, 32, 0.1, 9, true, false, 2.5);
     animation.drawFrame(this.game.clockTick, ctx, 705, 210);
     ctx.fillText("Invincibility", 800, 255);
 
     //draw the split shot powerup
-    spritesheet = this.game.assetManager.getAsset('img/powerup_coin.png');
+    spritesheet = this.game.assetManager.getAsset('img/ui/powerup_coin.png');
     animation = new Animation(spritesheet, 0, 0, 126, 126, 0.1, 8, true, false, 0.5)
     animation.drawFrame(this.game.clockTick, ctx, 715, 310);
     ctx.fillText("Split-Shot: Increase Deflected Lasers", 800, 345)
 
     //draw the tiny mode powerup
-    spritesheet = this.game.assetManager.getAsset('img/powerup_coin_T.png');
+    spritesheet = this.game.assetManager.getAsset('img/ui/powerup_coin_T.png');
     animation = new Animation(spritesheet, 0, 0, 126, 126, 0.1, 8, true, false, 0.5)
     animation.drawFrame(this.game.clockTick, ctx, 715, 400);
     ctx.fillText("Tiny Mode", 800, 435);
 
     //draw the homing shot powerup
-    spritesheet = this.game.assetManager.getAsset('img/powerup_laser.png');
+    spritesheet = this.game.assetManager.getAsset('img/ui/powerup_laser.png');
     animation = new Animation(spritesheet,  0, 0, 165, 159, 0.15, 12, true, false, 0.35);
     animation.drawFrame(this.game.clockTick, ctx, 715, 500);
     ctx.fillText("Homing Deflection:", 800, 525);
     ctx.fillText("Deflected Lasers Seek Nearby Droids", 800, 550);
 
     //draw the checkpoint
-    spritesheet = this.game.assetManager.getAsset('img/checkpoint.png');
+    spritesheet = this.game.assetManager.getAsset('img/ui/checkpoint.png');
     animation = new Animation(spritesheet, 0, 0, 64, 188, .1, 8, true, false, 0.5);
     animation.drawFrame(this.game.clockTick, ctx, 730, 580);
     ctx.fillText("Checkpoint", 800, 635);
 
     ctx.restore();
+  }
+
+  /**
+   * Factory for recreating a powerup token at an arbitrary position.
+   * Used exclusively by the respawn queue in trainingGroundUpdate.
+   */
+  _createTrainingPowerup(type, x, y) {
+    var am = this.game.assetManager;
+    switch (type) {
+      case 'HealthPowerUp':
+        return new HealthPowerUp(this.game, am.getAsset('img/ui/powerup_health.png'), x, y);
+      case 'ForcePowerUp':
+        return new ForcePowerUp(this.game, am.getAsset('img/ui/powerup_force.png'), x, y);
+      case 'InvincibilityPowerUp':
+        return new InvincibilityPowerUp(this.game, am.getAsset('img/ui/powerup_invincibility.png'), x, y);
+      case 'HomingLaserPowerUp':
+        return new HomingLaserPowerUp(this.game, x, y);
+      case 'SplitLaserPowerUp':
+        return new SplitLaserPowerUp(this.game, x, y);
+      case 'TinyModePowerUp':
+        return new TinyModePowerUp(this.game, x, y);
+    }
+    return null;
   }
 }
 
@@ -1492,10 +1679,10 @@ class AttributeCollectionScreen {
     this.tokens = tokensOffered;
     this.timer = 0;
 
-    this.forceHandImg = this.game.assetManager.getAsset('img/force hand.png');
-    this.healthHeartImg = this.game.assetManager.getAsset('img/health heart.png');
-    this.plusMinusImg = this.game.assetManager.getAsset('img/plus minus.png');
-    this.tokenImg = this.game.assetManager.getAsset('img/token.png');
+    this.forceHandImg = this.game.assetManager.getAsset('img/hero/force hand.png');
+    this.healthHeartImg = this.game.assetManager.getAsset('img/ui/health heart.png');
+    this.plusMinusImg = this.game.assetManager.getAsset('img/ui/plus minus.png');
+    this.tokenImg = this.game.assetManager.getAsset('img/ui/token.png');
   }
 
   update() {

@@ -295,7 +295,10 @@ Michael Josten`,
     TRAINING_DEFAULT_SLOW_BURST: false,
     TRAINING_DEFAULT_FAST_BURST: true,
     TRAINING_DEFAULT_SNIPER:     true,
-    TRAINING_DEFAULT_MULTISHOT:  false
+    TRAINING_DEFAULT_MULTISHOT:  false,
+
+    // Seconds after a powerup token is grabbed before it respawns at its home position
+    POWERUP_RESPAWN_DELAY: 60,
   },
 
   CollisionManagerConstants: {

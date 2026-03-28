@@ -109,27 +109,27 @@ class Level {
           var movingTile = new MovingTile(this, image2, j * this.tileWidth, i * this.camera.height / rows, lc.TILE_INITIAL_VELOCITY, 0, lc.TILE_ACCELERATION);
           this.tiles.push(movingTile);
         } else if (this.levelLayout[i][j] === 'd') { // basic droid
-          this.unspawnedDroids.push(new BasicDroid(this.game, this.game.assetManager.getAsset("img/droid-j-row.png"), j * this.tileWidth, i * rowHeight, 14, .2, 100, 100, Constants.DroidBasicConstants.BASIC_DROID_SCALE, 45));
+          this.unspawnedDroids.push(new BasicDroid(this.game, this.game.assetManager.getAsset("img/enemies/droid-j-row.png"), j * this.tileWidth, i * rowHeight, 14, .2, 100, 100, Constants.DroidBasicConstants.BASIC_DROID_SCALE, 45));
         } else if (this.levelLayout[i][j] === 's') { // scatter shot droid
-          this.unspawnedDroids.push(new ScatterShotDroid(this.game, this.game.assetManager.getAsset("img/Droid 3.png"), j * this.tileWidth, i * rowHeight, 10, .2));
+          this.unspawnedDroids.push(new ScatterShotDroid(this.game, this.game.assetManager.getAsset("img/enemies/Droid 3.png"), j * this.tileWidth, i * rowHeight, 10, .2));
         } else if (this.levelLayout[i][j] === 'b') { // slow burst droid
-          this.unspawnedDroids.push(new SlowBurstDroid(this.game, this.game.assetManager.getAsset("img/Droid 1.png"), j * this.tileWidth, i * rowHeight, 2, .8));
+          this.unspawnedDroids.push(new SlowBurstDroid(this.game, this.game.assetManager.getAsset("img/enemies/Droid 1.png"), j * this.tileWidth, i * rowHeight, 2, .8));
         } else if (this.levelLayout[i][j] === 'f') { // fast burst droid
-          this.unspawnedDroids.push(new FastBurstDroid(this.game, this.game.assetManager.getAsset("img/Droid 2.png"), j * this.tileWidth, i * rowHeight, 10, .12));
+          this.unspawnedDroids.push(new FastBurstDroid(this.game, this.game.assetManager.getAsset("img/enemies/Droid 2.png"), j * this.tileWidth, i * rowHeight, 10, .12));
         } else if (this.levelLayout[i][j] === 'n') { // sniper droid
-          this.unspawnedDroids.push(new SniperDroid(this.game, this.game.assetManager.getAsset("img/Droid 4.png"), j * this.tileWidth, i * rowHeight, 6, .2));
+          this.unspawnedDroids.push(new SniperDroid(this.game, this.game.assetManager.getAsset("img/enemies/Droid 4.png"), j * this.tileWidth, i * rowHeight, 6, .2));
         } else if (this.levelLayout[i][j] === 'm') { // multishot droid
-          this.unspawnedDroids.push(new MultishotDroid(this.game, this.game.assetManager.getAsset("img/Droid 5.png"), j * this.tileWidth, i * rowHeight, 21, .12));
+          this.unspawnedDroids.push(new MultishotDroid(this.game, this.game.assetManager.getAsset("img/enemies/Droid 5.png"), j * this.tileWidth, i * rowHeight, 21, .12));
         } else if (this.levelLayout[i][j] === 'X') { // Boss
           this.unspawnedBoss = new Boss(this.game, j * this.tileWidth, i * this.game.surfaceHeight / rows);
         } else if (this.levelLayout[i][j] === '*') { // leggy boss droid
-          this.unspawnedDroids.push(new LeggyDroidBoss(this.game, this.game.assetManager.getAsset("img/leggy_droid.png"), j * this.tileWidth, i * rowHeight, 4, .51));
+          this.unspawnedDroids.push(new LeggyDroidBoss(this.game, this.game.assetManager.getAsset("img/enemies/leggy_droid.png"), j * this.tileWidth, i * rowHeight, 4, .51));
         } else if (this.levelLayout[i][j] === 'H') { //health powerup
-          this.unspawnedPowerups.push(new HealthPowerUp(this.game, this.game.assetManager.getAsset("img/powerup_health.png"), j * this.tileWidth, i * rowHeight));
+          this.unspawnedPowerups.push(new HealthPowerUp(this.game, this.game.assetManager.getAsset("img/ui/powerup_health.png"), j * this.tileWidth, i * rowHeight));
         } else if (this.levelLayout[i][j] === 'F') { //force powerup
-          this.unspawnedPowerups.push(new ForcePowerUp(this.game, this.game.assetManager.getAsset("img/powerup_force.png"), j * this.tileWidth, i * rowHeight));
+          this.unspawnedPowerups.push(new ForcePowerUp(this.game, this.game.assetManager.getAsset("img/ui/powerup_force.png"), j * this.tileWidth, i * rowHeight));
         } else if (this.levelLayout[i][j] === 'I') { //invincibility powerup
-          this.unspawnedPowerups.push(new InvincibilityPowerUp(this.game, this.game.assetManager.getAsset('img/powerup_invincibility.png'), j * this.tileWidth, i * this.game.surfaceHeight / rows));
+          this.unspawnedPowerups.push(new InvincibilityPowerUp(this.game, this.game.assetManager.getAsset('img/ui/powerup_invincibility.png'), j * this.tileWidth, i * this.game.surfaceHeight / rows));
         } else if (this.levelLayout[i][j] === 'S') { //split laser powerup
           this.unspawnedPowerups.push(new SplitLaserPowerUp(this.game, j * this.tileWidth, i * this.game.surfaceHeight / rows));
         } else if (this.levelLayout[i][j] === 'T') { // tiny mode powerup
@@ -492,7 +492,7 @@ class ParallaxSnowBackground extends Entity {
     super(game, 0, 0, 0, 0);
 
     this.camera = sceneManager.camera;
-    this.backgroundImage = game.assetManager.getAsset("img/snow layer.png");
+    this.backgroundImage = game.assetManager.getAsset("img/levels/hoth/snow layer.png");
     this.imageWidth = this.backgroundImage.width;
     this.imageHeight = this.backgroundImage.height;
     this.distanceFromCamera = distanceFromCamera;

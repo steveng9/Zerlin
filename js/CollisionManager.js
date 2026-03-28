@@ -21,6 +21,13 @@ class CollisionManager {
   }
 
   handleCollisions() {
+    // On the multiplayer client all game entities (droids, lasers) are ghost copies
+    // whose authoritative state is driven entirely by the host snapshot. Skip all
+    // collision resolution here — results arrive via snapshot corrections.
+    if (this.sceneManager.multiplayerActive && this.game.network && !this.game.network.isHost) {
+      return;
+    }
+
     // this.droidOnDroid();
     this.droidOnSaber();
     this.laserOnDroid();
@@ -223,6 +230,7 @@ class CollisionManager {
         powerup.effect();
         powerup.playSound();
 
+        powerup.wasPickedUp = true;
         powerup.removeFromWorld = true;
       }
 
