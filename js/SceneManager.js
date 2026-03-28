@@ -1096,6 +1096,14 @@ class SceneManager2 {
 
   // ── Multiplayer snapshot helpers ─────────────────────────────────────────
 
+  /** Returns the alive player nearest to fromX (used by droid targeting). */
+  nearestPlayer(fromX) {
+    var z1 = this.Zerlin;
+    if (!this.multiplayerActive || !this.Zerlin2 || !this.Zerlin2.alive) return z1;
+    if (!z1.alive) return this.Zerlin2;
+    return Math.abs(fromX - z1.x) <= Math.abs(fromX - this.Zerlin2.x) ? z1 : this.Zerlin2;
+  }
+
   _buildPlayerSnapshot() {
     return {
       p1:    this._serializePlayer(this.Zerlin),

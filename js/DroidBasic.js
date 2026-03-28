@@ -55,6 +55,11 @@ class BasicDroid extends AbstractDroid {
       y: targetOrbitalY
     };
   }
+  /** Returns the nearest alive player — used by all targeting methods. */
+  get target() {
+    return this.sceneManager.nearestPlayer(this.boundCircle.x);
+  }
+
   /*
    * every update, the basic droid will move around zerlin entity about 50 to 100 pixels above him.
    * The droid will shoot every interval at the main character (as of now, at the mouse)
@@ -87,10 +92,10 @@ class BasicDroid extends AbstractDroid {
    * to target point + max argument
    */
   shoot() {
-    var targetX = this.sceneManager.Zerlin.x;
-    var targetY = this.sceneManager.Zerlin.boundingbox.y + this.sceneManager.Zerlin.boundingbox.height / 2;
-    var randTargetX = targetX + (this.sceneManager.Zerlin.boundingbox.width * (Math.random() - .5));
-    var randTargetY = targetY + (this.sceneManager.Zerlin.boundingbox.height * (Math.random() - .5));
+    var targetX = this.target.x;
+    var targetY = this.target.boundingbox.y + this.target.boundingbox.height / 2;
+    var randTargetX = targetX + (this.target.boundingbox.width * (Math.random() - .5));
+    var randTargetY = targetY + (this.target.boundingbox.height * (Math.random() - .5));
     var droidLaser = new DroidLaser(this.game,
       this.boundCircle.x,
       this.boundCircle.y,
@@ -111,10 +116,10 @@ class BasicDroid extends AbstractDroid {
    * target.
    */
   calcMovement() {
-    this.targetOrbitalPointLeft.x = this.sceneManager.Zerlin.x - dbc.BASIC_DROID_ORBITAL_X_OFFSET;
+    this.targetOrbitalPointLeft.x = this.target.x - dbc.BASIC_DROID_ORBITAL_X_OFFSET;
     //add 200 so that the droids uses up all the canvas becuase when targeting Zerlin,
     //doesn't use all of the canvas
-    this.targetOrbitalPointRight.x = this.sceneManager.Zerlin.x + dbc.BASIC_DROID_ORBITAL_X_OFFSET + 200;
+    this.targetOrbitalPointRight.x = this.target.x + dbc.BASIC_DROID_ORBITAL_X_OFFSET + 200;
 
     //if the droid is to the left of targetRight and right of targetLeft
     if (this.x <= this.targetOrbitalPointRight.x && this.x >= this.targetOrbitalPointLeft.x) {
@@ -175,8 +180,8 @@ class ScatterShotDroid extends BasicDroid {
   }
 
   shoot() {
-    var targetAngle = Math.atan2(this.sceneManager.Zerlin.boundingbox.y + this.sceneManager.Zerlin.boundingbox.height / 2 - this.boundCircle.y,
-      this.sceneManager.Zerlin.x - this.boundCircle.x);
+    var targetAngle = Math.atan2(this.target.boundingbox.y + this.target.boundingbox.height / 2 - this.boundCircle.y,
+      this.target.x - this.boundCircle.x);
     var distanceToTarget = 100; // arbitrary number to set laser's path, value not important
 
     var laserAngleOffset = dbc.SPRAY_LASER_WIDTH_RADIANS / 2;
@@ -207,8 +212,8 @@ class SlowBurstDroid extends BasicDroid {
     if (this.shootIntervalCount <= dbc.SLOWBURST_DROID_BURSTS) {
       let laser = new DroidLaser(this.game, this.boundCircle.x, this.boundCircle.y,
         dbc.SLOWBURST_DROID_LASER_SPEED,
-        this.sceneManager.Zerlin.x,
-        this.sceneManager.Zerlin.boundingbox.y + this.sceneManager.Zerlin.boundingbox.height / 2,
+        this.target.x,
+        this.target.boundingbox.y + this.target.boundingbox.height / 2,
         dbc.BASIC_DROID_LASER_LENGTH, dbc.BASIC_DROID_LASER_WIDTH, "#339933", "#00ff00");
       this.sceneManager.addLaser(laser);
       this.game.audio.playSoundFx(this.game.audio.enemy, 'retroBlasterShot');
@@ -232,8 +237,8 @@ class FastBurstDroid extends BasicDroid {
     if (this.shootIntervalCount <= dbc.FASTBURST_DROID_BURSTS) {
       let laser = new DroidLaser(this.game, this.boundCircle.x, this.boundCircle.y,
         dbc.FASTBURST_DROID_LASER_SPEED,
-        this.sceneManager.Zerlin.x,
-        this.sceneManager.Zerlin.boundingbox.y + this.sceneManager.Zerlin.boundingbox.height / 2,
+        this.target.x,
+        this.target.boundingbox.y + this.target.boundingbox.height / 2,
         dbc.LEGGY_DROID_LASER_LENGTH, dbc.LEGGY_DROID_LASER_WIDTH, "#006699", "#00ccff");
       this.sceneManager.addLaser(laser);
       this.game.audio.playSoundFx(this.game.audio.enemy, 'retroBlasterShot');
@@ -256,8 +261,8 @@ class SniperDroid extends BasicDroid {
   shoot() {
     let laser = new DroidLaser(this.game, this.boundCircle.x, this.boundCircle.y,
       dbc.SNIPER_DROID_LASER_SPEED,
-      this.sceneManager.Zerlin.x,
-      this.sceneManager.Zerlin.boundingbox.y + this.sceneManager.Zerlin.boundingbox.height / 2,
+      this.target.x,
+      this.target.boundingbox.y + this.target.boundingbox.height / 2,
       dbc.SNIPER_DROID_LASER_LENGTH, dbc.SNIPER_DROID_LASER_WIDTH, "#cccc00", "#ffff00");
     this.sceneManager.addLaser(laser);
     this.game.audio.playSoundFx(this.game.audio.enemy, 'bowcasterShoot');
@@ -275,9 +280,9 @@ class MultishotDroid extends BasicDroid {
   }
 
   shoot() {
-    var angleToZerlin = Math.atan2(this.sceneManager.Zerlin.y - 150 - this.boundCircle.y, this.sceneManager.Zerlin.x - this.boundCircle.x);
-    var xTarget = this.sceneManager.Zerlin.x;
-    var yTarget = this.sceneManager.Zerlin.boundingbox.y + this.sceneManager.Zerlin.boundingbox.height / 2;
+    var angleToZerlin = Math.atan2(this.target.y - 150 - this.boundCircle.y, this.target.x - this.boundCircle.x);
+    var xTarget = this.target.x;
+    var yTarget = this.target.boundingbox.y + this.target.boundingbox.height / 2;
     var xOffset = Math.cos(angleToZerlin + Math.PI / 2) * dbc.MULTISHOT_WIDTH / 2;
     var yOffset = Math.sin(angleToZerlin + Math.PI / 2) * dbc.MULTISHOT_WIDTH / 2;
 

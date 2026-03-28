@@ -47,10 +47,12 @@ Branch: `multiplayer` (merge to `master` only when fully ironed out)
 - [x] Note: droids/lasers run independently per machine (each fights their own) — full entity sync deferred to polish phase
 - [x] Commit: `multiplayer: Phase 3 - game state sync over WebRTC`
 
-### Phase 4 — Co-op collision rules [ ]
-- [ ] `CollisionManager.laserOnZerlin()` → check both P1 and P2
-- [ ] `CollisionManager.droidOnSaber()` → check both sabers
-- [ ] `CollisionManager.laserOnSaber()` → check both sabers for deflection
+### Phase 4 — Co-op collision rules [x]
+- [x] `CollisionManager.laserOnZerlin()` → `_laserOnPlayer(zerlin)` helper called for both players; `!laser.removeFromWorld` guard prevents double-hit
+- [x] `CollisionManager.droidOnSaber()` → `_droidOnPlayerSaber(zerlin)` helper called for both players
+- [x] `CollisionManager.laserOnSaber()` → `_laserOnPlayerSaber(zerlin)` helper called for both sabers; deflect methods accept zerlin param
+- [x] `isCollidedWithSaber(laser, lightsaber)` — lightsaber param instead of hardcoded Z1
+- [x] Droid targeting: `SceneManager.nearestPlayer(fromX)` helper; `BasicDroid.get target()` getter (inherited by all droid subclasses and LeggyDroidBoss); replaced all `this.sceneManager.Zerlin` in DroidBasic.js and DroidBoss.js
 - [ ] Test: laser deflection, saber hits, damage on both players
 - [ ] Commit: `multiplayer: Phase 4 - co-op collision rules`
 
@@ -76,7 +78,7 @@ Branch: `multiplayer` (merge to `master` only when fully ironed out)
 - Phase 2 complete ✓
 - Phase 3 complete (commit `e8ccb8e`); multiple bug-fix commits
 - Phase 3 fully verified ✓ — both players visible and synced across browsers
-- **Next: Phase 4 — co-op collision rules**
+- Phase 4 complete (untested) — **Next: test Phase 4, then Phase 5 polish**
 
 ### Phase 3 bug fixes (all committed together):
 - `closeLobby()` was calling `network.disconnect()` on successful connect — fixed by splitting into `closeUI()` (success path) vs `closeLobby()` (cancel path)
