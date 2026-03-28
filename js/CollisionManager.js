@@ -103,7 +103,7 @@ class CollisionManager {
 
   droidOnSaber() {
     var zerlin = this.sceneManager.Zerlin;
-    if (zerlin.slashing && zerlin.slashZone.active) {
+    if (zerlin.slashing && zerlin.slashZone && zerlin.slashZone.active) {
       for (var i = this.sceneManager.droids.length - 1; i >= 0; i--) {
         var droid = this.sceneManager.droids[i];
         // check if droid in circular path of saber and not below zerlin
@@ -505,7 +505,7 @@ class CollisionManager {
       var bossBox = this.sceneManager.boss.boundingbox;
       var bossCenterX = bossBox.x + bossBox.width / 2;
       var bossCenterY = bossBox.y + bossBox.height / 2;
-      if (zerlin.slashing && zerlin.slashZone.active) {
+      if (zerlin.slashing && zerlin.slashZone && zerlin.slashZone.active) {
 
         // check if droid in circular path of saber and not below zerlin
         if (collidePointWithCircle(bossCenterX,

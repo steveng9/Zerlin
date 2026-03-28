@@ -40,6 +40,9 @@ class Zerlin extends Entity {
     this.crouching = false;
     this.falling = true;
     this.forceJumping = false;
+    this.slashing = false;
+    this.slashingDirection = 0;
+    this.slashZone = {};  // must exist before startSlash() to avoid crash on P2's machine
     this.armSocketY = zc.Z_ARM_SOCKET_Y;
     this.faceRight();
 

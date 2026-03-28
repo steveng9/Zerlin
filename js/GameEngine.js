@@ -320,14 +320,20 @@ class GameEngine {
       panel.style.display       = 'block';
     };
 
-    var closeLobby = () => {
+    // closeUI: hide overlay + reset display (does NOT kill the network connection)
+    var closeUI = () => {
       overlay.style.display = 'none';
-      this.network.disconnect();
-      showPanel(choicePanel); // reset for next open
+      showPanel(choicePanel);
       document.getElementById('hostStatus').textContent = 'Waiting for partner to connect...';
       document.getElementById('joinStatus').textContent = '\u00a0';
       document.getElementById('roomCodeDisplay').textContent = '------';
       document.getElementById('roomCodeInput').value = '';
+    };
+
+    // closeLobby: closeUI + disconnect (used by cancel buttons only)
+    var closeLobby = () => {
+      closeUI();
+      this.network.disconnect();
     };
 
     // Open lobby
@@ -354,7 +360,7 @@ class GameEngine {
       this.network.onConnected = () => {
         document.getElementById('hostStatus').textContent = 'Partner connected! Starting...';
         setTimeout(() => {
-          closeLobby();
+          closeUI();
           this.sceneManager.startMultiplayerTrainingScene();
         }, 800);
       };
@@ -391,7 +397,7 @@ class GameEngine {
       this.network.onConnected = () => {
         document.getElementById('joinStatus').textContent = 'Connected! Starting...';
         setTimeout(() => {
-          closeLobby();
+          closeUI();
           this.sceneManager.startMultiplayerTrainingScene();
         }, 800);
       };

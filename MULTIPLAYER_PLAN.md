@@ -38,13 +38,14 @@ Branch: `multiplayer` (merge to `master` only when fully ironed out)
 - [x] Camera: follow midpoint of both players
 - [x] Commit: `multiplayer: Phase 2 - Zerlin2 entity and dual-player training ground`
 
-### Phase 3 — Wire networking to game state [ ]
-- [ ] Snapshot serializer: pack world state (both players, droids, lasers, killCount)
-- [ ] Host: serialize + send snapshot at 20 Hz
-- [ ] Client (P2): deserialize snapshot, update entity positions
-- [ ] Client (P2): capture keyboard/mouse input, send to P1 each frame
-- [ ] P1: apply received P2 inputs to Zerlin2's update()
-- [ ] Commit: `multiplayer: Phase 3 - game state sync over WebRTC`
+### Phase 3 — Wire networking to game state [x]
+- [x] Snapshot serializer: player positions, health, force, saber angle
+- [x] Host: serialize + send player snapshot at 20 Hz
+- [x] Client: apply snapshot (P1 position, P2 reconciliation) before local sim
+- [x] Client: send keys/mouse/click to host every frame
+- [x] Zerlin2.update() host-aware: host=received input, client=local input
+- [x] Note: droids/lasers run independently per machine (each fights their own) — full entity sync deferred to polish phase
+- [x] Commit: `multiplayer: Phase 3 - game state sync over WebRTC`
 
 ### Phase 4 — Co-op collision rules [ ]
 - [ ] `CollisionManager.laserOnZerlin()` → check both P1 and P2
@@ -71,10 +72,19 @@ Branch: `multiplayer` (merge to `master` only when fully ironed out)
 ---
 
 ## Current Status
-- Phase 1 complete (committed `94c10b1`)
-- Phase 1 fully verified ✓
-- Phase 2 complete (commit `b402820`) — needs visual test (open Multiplayer → connect → confirm two characters render)
-- **Next: Phase 3** — game state serialization + wire P2 input over WebRTC
+- Phase 1 complete (committed `94c10b1`) ✓
+- Phase 2 complete ✓
+- Phase 3 complete (commit `e8ccb8e`); multiple bug-fix commits
+- Phase 3 fully verified ✓ — both players visible and synced across browsers
+- **Next: Phase 4 — co-op collision rules**
+
+### Phase 3 bug fixes (all committed together):
+- `closeLobby()` was calling `network.disconnect()` on successful connect — fixed by splitting into `closeUI()` (success path) vs `closeLobby()` (cancel path)
+- SFX disabled by default (set `soundFxMuted = true` at init)
+- Z1 animation state (somersaulting, slashing, crouching, forceJumping, facingRight, saber arm sprite) now synced to P2's screen every frame via `lastP1State`
+- `slashZone` initialized to `{}` in `reset()` to prevent crash when snapshot sets `slashing=true` before `startSlash()` runs
+- CollisionManager null-guard on `slashZone` access
+- Fake keys/mouse strategy: fake mouse at `Zerlin.x - camera.x` (no spurious facing flips); fake direction keys from `lastP1State.direction` (prevents `deltaX=0` decel that caused choppiness when facing right)
 
 ## Key Files to Touch
 - `index.html` — add PeerJS CDN, lobby UI

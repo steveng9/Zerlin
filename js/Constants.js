@@ -543,7 +543,7 @@ Michael Josten`,
     TRAINING_GROUND_LAYOUT: [
       'd s b f n m d s ',   // droids — open sky
       ' n m d s f b n m',   // droids
-      '        H       ',   // health powerup, open air above tier 3
+      '     W  H   S   ',   // health powerup, open air above tier 3
       '     -      --  ',   // tier 3 — two tiny platforms (very sparse)
       ' d  n F m   b   ',   // droids + force powerup between tiers 3 & 2
       '  ---     --    ',   // tier 2 — two short platforms (sparse)

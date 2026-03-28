@@ -750,10 +750,15 @@ class SceneManager2 {
 
     // Networking
     this.pendingSnapshot = null;
+    this.lastP1State = null;
     this.networkSnapshotTimer = 0;
     if (!this.game.network.isHost) {
-      // Client: stash incoming snapshots for application at start of next update
-      this.game.network.onStateReceived = (snap) => { this.pendingSnapshot = snap; };
+      // Client: stash incoming snapshots for application at start of next update;
+      // also track lastP1State for per-frame animation override
+      this.game.network.onStateReceived = (snap) => {
+        this.pendingSnapshot = snap;
+        this.lastP1State = snap.p1;
+      };
     }
   }
 
@@ -852,13 +857,51 @@ class SceneManager2 {
       if (this.multiplayerActive && this.Zerlin2 && !this.game.network.isHost) {
         var _sk = this.game.keys; var _sm = this.game.mouse;
         var _sc = this.game.click; var _src = this.game.rightClickDown;
-        this.game.keys = {};
-        this.game.mouse = { x: this.Zerlin.x + 1000, y: this.Zerlin.y }; // saber points right neutrally
+        // Fake keys: pass P1's direction so update() doesn't zero deltaX.
+        // No jump/roll/slash keys — those states come from the per-frame override.
+        var fakeKeys = {};
+        if (this.lastP1State) {
+          var d = this.lastP1State.direction;
+          if (d === 1)  fakeKeys['KeyD'] = true;
+          if (d === -1) fakeKeys['KeyA'] = true;
+        }
+        this.game.keys = fakeKeys;
+        // Fake mouse exactly at Zerlin.x in screen space → neither facing-flip
+        // branch (lines 119/121) fires, so it can't override the correct facing
+        // direction we set in the per-frame override below.
+        this.game.mouse = { x: this.Zerlin.x - this.camera.x, y: this.Zerlin.y };
         this.game.click = null;
         this.game.rightClickDown = false;
         this.Zerlin.update();
         this.game.keys = _sk; this.game.mouse = _sm;
         this.game.click = _sc; this.game.rightClickDown = _src;
+        // Re-apply last-known P1 state every frame so draw() shows the right
+        // sprite and the saber arm matches P1's orientation.
+        if (this.lastP1State) {
+          var s = this.lastP1State;
+          // Correct facing direction (also recomputes bounding box)
+          if (s.facingRight) this.Zerlin.faceRight(); else this.Zerlin.faceLeft();
+          // Restore animation-driving flags
+          this.Zerlin.direction              = s.direction;
+          this.Zerlin.falling                = s.falling;
+          this.Zerlin.somersaulting          = s.somersaulting          || false;
+          this.Zerlin.somersaultingDirection = s.somersaultingDirection  || 0;
+          this.Zerlin.slashing               = s.slashing               || false;
+          this.Zerlin.slashingDirection      = s.slashingDirection       || 0;
+          this.Zerlin.forceJumping           = s.forceJumping            || false;
+          this.Zerlin.crouching              = s.crouching               || false;
+          // Directly set the correct arm sprite, bypassing mouse-driven flip logic
+          if (this.Zerlin.lightsaber) {
+            var ls = this.Zerlin.lightsaber;
+            if (s.saberFacingRight) {
+              s.saberUp ? ls.faceRightUpSaber() : ls.faceRightDownSaber();
+            } else {
+              s.saberUp ? ls.faceLeftUpSaber() : ls.faceLeftDownSaber();
+            }
+            ls.angle  = s.saberAngle;
+            ls.hidden = s.saberHidden || false;
+          }
+        }
       } else {
         this.Zerlin.update();
       }
@@ -1071,7 +1114,16 @@ class SceneManager2 {
       alive:     z.alive,
       direction: z.direction,
       falling:   z.falling,
-      saberAngle: z.lightsaber ? z.lightsaber.angle : 0,
+      somersaulting:          z.somersaulting,
+      somersaultingDirection: z.somersaultingDirection,
+      slashing:               z.slashing,
+      slashingDirection:      z.slashingDirection,
+      forceJumping:           z.forceJumping,
+      crouching:              z.crouching,
+      saberAngle:       z.lightsaber ? z.lightsaber.angle       : 0,
+      saberHidden:      z.lightsaber ? z.lightsaber.hidden      : false,
+      saberFacingRight: z.lightsaber ? z.lightsaber.facingRight : true,
+      saberUp:          z.lightsaber ? z.lightsaber.saberUp     : true,
     };
   }
 

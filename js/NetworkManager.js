@@ -69,7 +69,7 @@ class NetworkManager {
         this.peer = new Peer(NetworkManager._peerConfig());
 
         this.peer.on('open', () => {
-            this.conn = this.peer.connect(this.roomCode, { reliable: false });
+            this.conn = this.peer.connect(this.roomCode);
             this._setupConnection(this.conn);
         });
 

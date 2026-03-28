@@ -74,7 +74,7 @@ class MusicMenu {
 
     this.ctx = this.gameEngine.ctx //not needed
     this.xMusicChecked = true;  // music off by default; one click to enable
-    this.xFxChecked = false;    // SFX on by default
+    this.xFxChecked = true;    // SFX on by default
 
   }
 
@@ -434,7 +434,7 @@ class SoundEngine {
       this.droidBossMechanical, this.saberDeflectLaser, this.poisonShot,
       this.shipTakeOff, this.campFire, this.lightning, this.continue, this.plus, this.minus
     ];
-    this.soundFxMuted = false;
+    this.soundFxMuted = true;
   }
 
   //pauseBackgroundMusic, unpauseBackgroundMusic
