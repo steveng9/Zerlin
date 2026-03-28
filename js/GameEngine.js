@@ -374,10 +374,14 @@ class GameEngine {
     });
 
     // Copy code button
-    document.getElementById('copyCodeBtn').addEventListener('click', () => {
+    var copyBtn = document.getElementById('copyCodeBtn');
+    copyBtn.addEventListener('click', () => {
       var code = document.getElementById('roomCodeDisplay').textContent;
       if (code && code !== '...' && code !== '------') {
-        navigator.clipboard.writeText(code).catch(() => {});
+        navigator.clipboard.writeText(code).then(() => {
+          copyBtn.textContent = 'COPIED!';
+          setTimeout(() => { copyBtn.textContent = 'COPY CODE'; }, 1500);
+        }).catch(() => {});
       }
     });
 

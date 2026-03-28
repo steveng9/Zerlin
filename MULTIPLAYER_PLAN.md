@@ -57,11 +57,11 @@ Branch: `multiplayer` (merge to `master` only when fully ironed out)
 - [x] Bug fix: Z2's saber collision line stale on host — `_applySnapshot` now calls `updateCollisionLine()` after setting `lightsaber.angle`
 - [x] Commit: `multiplayer: Phase 4 - co-op collision rules`
 
-### Phase 5 — Polish & resilience [ ]
-- [ ] Local prediction for P2's own character (run physics locally, lerp to authoritative pos on snapshot)
+### Phase 5 — Polish & resilience [~]
+- [ ] Local prediction for P2's own character — defer until remote latency is tested
 - [ ] Disconnect handling: pause + reconnect prompt
-- [ ] Lobby: copy-to-clipboard button for room code
-- [ ] Add multiplayer entry point to main menu
+- [x] Lobby: copy-to-clipboard button with "COPIED!" feedback (was already wired; added visual confirmation)
+- [x] Multiplayer entry point in cheat buttons bar (was already implemented)
 - [ ] Commit: `multiplayer: Phase 5 - local prediction and UX polish`
 
 ### Phase 6 — P2 Sprites [ ]
