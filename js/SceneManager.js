@@ -860,6 +860,7 @@ class SceneManager2 {
           var _zc = Constants.ZerlinConstants;
           _ls.x = this.Zerlin.x;
           _ls.y = this.Zerlin.y - (_zc.Z_HEIGHT - this.Zerlin.armSocketY) * this.Zerlin.scale;
+          _ls.updateCollisionLine();
           if (_ls.airbornSaber) _ls.airbornSaber.update();
         }
       } else {
