@@ -892,6 +892,12 @@ class SceneManager2 {
           this.Zerlin.somersaultingDirection = s.somersaultingDirection  || 0;
           this.Zerlin.slashing               = s.slashing               || false;
           this.Zerlin.slashingDirection      = s.slashingDirection       || 0;
+          if (s.slashElapsedTime     !== undefined && this.Zerlin.slashingAnimation)
+            this.Zerlin.slashingAnimation.elapsedTime     = s.slashElapsedTime;
+          if (s.slashLeftElapsedTime !== undefined && this.Zerlin.slashingLeftAnimation)
+            this.Zerlin.slashingLeftAnimation.elapsedTime = s.slashLeftElapsedTime;
+          if (s.somersaultElapsedTime !== undefined && this.Zerlin.somersaultingAnimation)
+            this.Zerlin.somersaultingAnimation.elapsedTime = s.somersaultElapsedTime;
           this.Zerlin.forceJumping           = s.forceJumping            || false;
           this.Zerlin.crouching              = s.crouching               || false;
           if (this.Zerlin.lightsaber) {
@@ -1163,6 +1169,9 @@ class SceneManager2 {
       somersaultingDirection: z.somersaultingDirection,
       slashing:               z.slashing,
       slashingDirection:      z.slashingDirection,
+      slashElapsedTime:       z.slashingAnimation     ? z.slashingAnimation.elapsedTime     : 0,
+      slashLeftElapsedTime:   z.slashingLeftAnimation ? z.slashingLeftAnimation.elapsedTime : 0,
+      somersaultElapsedTime:  z.somersaultingAnimation ? z.somersaultingAnimation.elapsedTime : 0,
       forceJumping:           z.forceJumping,
       crouching:              z.crouching,
       armSpriteKey:     z.lightsaber ? z.lightsaber.armSpriteKey : 'rightUp',
