@@ -844,27 +844,31 @@ class SceneManager2 {
     this.musicMenu.update();
 
     if (!this.paused) {
-      // Client: apply authoritative positions from host BEFORE running local sim
+      // Client: run Zerlin (P1's character) with completely neutral input so
+      // local physics work (gravity, platform landing, lastBottom tracking)
+      // but P2's keys/mouse/clicks don't affect P1's character.
+      // Snapshot correction is applied AFTER physics so Zerlin doesn't
+      // start stuck at y=0 off the top of the screen.
+      if (this.multiplayerActive && this.Zerlin2 && !this.game.network.isHost) {
+        var _sk = this.game.keys; var _sm = this.game.mouse;
+        var _sc = this.game.click; var _src = this.game.rightClickDown;
+        this.game.keys = {};
+        this.game.mouse = { x: this.Zerlin.x + 1000, y: this.Zerlin.y }; // saber points right neutrally
+        this.game.click = null;
+        this.game.rightClickDown = false;
+        this.Zerlin.update();
+        this.game.keys = _sk; this.game.mouse = _sm;
+        this.game.click = _sc; this.game.rightClickDown = _src;
+      } else {
+        this.Zerlin.update();
+      }
+
+      // Client: apply snapshot corrections AFTER physics so positions are
+      // authoritative but Zerlin has valid gravity/platform state each frame.
       if (this.multiplayerActive && this.Zerlin2 && !this.game.network.isHost && this.pendingSnapshot) {
         this._applyPlayerFromSnapshot(this.Zerlin,  this.pendingSnapshot.p1);
         this._applyPlayerFromSnapshot(this.Zerlin2, this.pendingSnapshot.p2);
         this.pendingSnapshot = null;
-      }
-
-      // Client: Zerlin is P1's character driven purely by snapshot.
-      // Skip full update() to prevent local gravity/input from overriding the
-      // snapshot position. Just keep the lightsaber position in sync for rendering.
-      if (this.multiplayerActive && this.Zerlin2 && !this.game.network.isHost) {
-        var _ls = this.Zerlin.lightsaber;
-        if (_ls) {
-          var _zc = Constants.ZerlinConstants;
-          _ls.x = this.Zerlin.x;
-          _ls.y = this.Zerlin.y - (_zc.Z_HEIGHT - this.Zerlin.armSocketY) * this.Zerlin.scale;
-          _ls.updateCollisionLine();
-          if (_ls.airbornSaber) _ls.airbornSaber.update();
-        }
-      } else {
-        this.Zerlin.update();
       }
 
       if (this.multiplayerActive && this.Zerlin2) this.Zerlin2.update();
