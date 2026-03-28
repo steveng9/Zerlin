@@ -727,19 +727,21 @@ class Zerlin2 extends Zerlin {
     var net = this.game.network;
     if (net && net.isHost) {
       // P1's machine: drive Zerlin2 with the input received from P2
-      var savedKeys  = this.game.keys;
-      var savedMouse = this.game.mouse;
-      var savedClick = this.game.click;
+      var savedKeys       = this.game.keys;
+      var savedMouse      = this.game.mouse;
+      var savedClick      = this.game.click;
+      var savedRightClick = this.game.rightClickDown;
       var inp = net.lastReceivedInput;
-      this.game.keys  = inp.keys  || {};
-      this.game.mouse = { x: inp.mouseX != null ? inp.mouseX : (savedMouse ? savedMouse.x : 0),
-                          y: inp.mouseY != null ? inp.mouseY : (savedMouse ? savedMouse.y : 0) };
-      // game.click is {x,y} or null; reconstruct it so lightsaber throw works
-      this.game.click = inp.click ? { x: inp.mouseX, y: inp.mouseY } : null;
+      this.game.keys          = inp.keys  || {};
+      this.game.mouse         = { x: inp.mouseX != null ? inp.mouseX : (savedMouse ? savedMouse.x : 0),
+                                   y: inp.mouseY != null ? inp.mouseY : (savedMouse ? savedMouse.y : 0) };
+      this.game.click         = inp.click ? { x: inp.mouseX, y: inp.mouseY } : null;
+      this.game.rightClickDown = inp.rightClickDown || false;
       super.update();
-      this.game.keys  = savedKeys;
-      this.game.mouse = savedMouse;
-      this.game.click = savedClick;
+      this.game.keys          = savedKeys;
+      this.game.mouse         = savedMouse;
+      this.game.click         = savedClick;
+      this.game.rightClickDown = savedRightClick;
     } else {
       // P2's machine: Zerlin2 IS the local player — use keyboard/mouse directly
       super.update();

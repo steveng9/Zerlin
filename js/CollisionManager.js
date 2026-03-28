@@ -230,7 +230,13 @@ class CollisionManager {
   }
 
   ZerlinOnPlatform() {
-    var zerlin = this.sceneManager.Zerlin;
+    this._playerOnPlatform(this.sceneManager.Zerlin);
+    if (this.sceneManager.multiplayerActive && this.sceneManager.Zerlin2) {
+      this._playerOnPlatform(this.sceneManager.Zerlin2);
+    }
+  }
+
+  _playerOnPlatform(zerlin) {
     if (zerlin.falling) { // check if landed
       for (let i = 0; i < this.sceneManager.level.tiles.length; i++) {
         let tile = this.sceneManager.level.tiles[i];
@@ -254,7 +260,7 @@ class CollisionManager {
     }
   }
 
-  ZerlinOnEdgeOfMap() { // TODO: currently, keeps zerlin from falling off edge of map, but do we want to allow that for daring players? Adventurous but foolhardy
+  ZerlinOnEdgeOfMap() {
     var zerlin = this.sceneManager.Zerlin;
     if (zerlin.y > 2 * this.sceneManager.camera.height) {
       if (zerlin.alive) {
@@ -263,8 +269,6 @@ class CollisionManager {
         this.sceneManager.powerups = [];
         this.sceneManager.level.set();
         if (this.sceneManager.enabledDroidTypes) {
-          // Training mode: drain into the filtered pool so level.update() doesn't
-          // bypass the pool system and spawn all types at once.
           this.sceneManager.trainingDroidPool = this.sceneManager.level.unspawnedDroids.filter(
             d => this.sceneManager.enabledDroidTypes.has(d.constructor.name)
           );
@@ -279,6 +283,20 @@ class CollisionManager {
       zerlin.setXY(this.sceneManager.level.length - cm.EDGE_OF_MAP_BUFFER, zerlin.y);
     }
 
+    // P2: same boundary clamping, but no level reset on bottom fall (just respawn)
+    if (this.sceneManager.multiplayerActive && this.sceneManager.Zerlin2) {
+      var z2 = this.sceneManager.Zerlin2;
+      if (z2.y > 2 * this.sceneManager.camera.height) {
+        if (z2.alive) {
+          z2.setXY(this.sceneManager.checkPoint.boundingBox.x + 250, 0);
+          z2.deltaY = 0;
+        }
+      } else if (z2.x < cm.EDGE_OF_MAP_BUFFER) {
+        z2.setXY(cm.EDGE_OF_MAP_BUFFER, z2.y);
+      } else if (z2.x > this.sceneManager.level.length - cm.EDGE_OF_MAP_BUFFER) {
+        z2.setXY(this.sceneManager.level.length - cm.EDGE_OF_MAP_BUFFER, z2.y);
+      }
+    }
   }
 
   ZerlinOnCheckpoint() {
@@ -519,7 +537,13 @@ class CollisionManager {
   }
 
   catchSaber() {
-    var saberArm = this.sceneManager.Zerlin.lightsaber;
+    this._catchSaberForPlayer(this.sceneManager.Zerlin.lightsaber);
+    if (this.sceneManager.multiplayerActive && this.sceneManager.Zerlin2) {
+      this._catchSaberForPlayer(this.sceneManager.Zerlin2.lightsaber);
+    }
+  }
+
+  _catchSaberForPlayer(saberArm) {
     if (saberArm.throwing) {
       if (saberArm.airbornSaber.throwTimer > .5) {
         if (collidePointWithCircle(saberArm.x, saberArm.y, saberArm.airbornSaber.x, saberArm.airbornSaber.y, saberArm.airbornSaber.radius)) {

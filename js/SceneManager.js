@@ -851,13 +851,17 @@ class SceneManager2 {
         this.pendingSnapshot = null;
       }
 
-      // Client: Zerlin is P1's character — run update with empty input so animations
-      // and lightsaber position stay correct, but P2's keys don't move P1.
+      // Client: Zerlin is P1's character driven purely by snapshot.
+      // Skip full update() to prevent local gravity/input from overriding the
+      // snapshot position. Just keep the lightsaber position in sync for rendering.
       if (this.multiplayerActive && this.Zerlin2 && !this.game.network.isHost) {
-        var _sk = this.game.keys; var _sc = this.game.click;
-        this.game.keys = {}; this.game.click = null;
-        this.Zerlin.update();
-        this.game.keys = _sk; this.game.click = _sc;
+        var _ls = this.Zerlin.lightsaber;
+        if (_ls) {
+          var _zc = Constants.ZerlinConstants;
+          _ls.x = this.Zerlin.x;
+          _ls.y = this.Zerlin.y - (_zc.Z_HEIGHT - this.Zerlin.armSocketY) * this.Zerlin.scale;
+          if (_ls.airbornSaber) _ls.airbornSaber.update();
+        }
       } else {
         this.Zerlin.update();
       }
@@ -946,10 +950,11 @@ class SceneManager2 {
         } else {
           // Client: send local input to host every frame
           this.game.network.sendInput({
-            keys:   this.game.keys,
-            mouseX: this.game.mouse ? this.game.mouse.x : 0,
-            mouseY: this.game.mouse ? this.game.mouse.y : 0,
-            click:  !!this.game.click,
+            keys:           this.game.keys,
+            mouseX:         this.game.mouse ? this.game.mouse.x : 0,
+            mouseY:         this.game.mouse ? this.game.mouse.y : 0,
+            click:          !!this.game.click,
+            rightClickDown: this.game.rightClickDown || false,
           });
         }
       }
