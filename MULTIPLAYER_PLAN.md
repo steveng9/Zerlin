@@ -78,7 +78,8 @@ Branch: `multiplayer` (merge to `master` only when fully ironed out)
 - Phase 2 complete ✓
 - Phase 3 complete (commit `e8ccb8e`); multiple bug-fix commits
 - Phase 3 fully verified ✓ — both players visible and synced across browsers
-- Phase 4 complete (untested) — **Next: test Phase 4, then Phase 5 polish**
+- Phase 4 complete ✓ — **Next: Phase 5 polish**
+- Bug fix: Z1's saber collision line on P2's screen was stale (computed from fake mouse angle before per-frame saberAngle override); fixed by calling ls.updateCollisionLine() after overriding ls.angle
 
 ### Phase 3 bug fixes (all committed together):
 - `closeLobby()` was calling `network.disconnect()` on successful connect — fixed by splitting into `closeUI()` (success path) vs `closeLobby()` (cancel path)

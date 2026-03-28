@@ -900,6 +900,7 @@ class SceneManager2 {
             }
             ls.angle  = s.saberAngle;
             ls.hidden = s.saberHidden || false;
+            ls.updateCollisionLine(); // recompute bladeCollar/bladeTip after angle override
           }
         }
       } else {
