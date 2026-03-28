@@ -53,8 +53,9 @@ Branch: `multiplayer` (merge to `master` only when fully ironed out)
 - [x] `CollisionManager.laserOnSaber()` → `_laserOnPlayerSaber(zerlin)` helper called for both sabers; deflect methods accept zerlin param
 - [x] `isCollidedWithSaber(laser, lightsaber)` — lightsaber param instead of hardcoded Z1
 - [x] Droid targeting: `SceneManager.nearestPlayer(fromX)` helper; `BasicDroid.get target()` getter (inherited by all droid subclasses and LeggyDroidBoss); replaced all `this.sceneManager.Zerlin` in DroidBasic.js and DroidBoss.js
-- [ ] Test: laser deflection, saber hits, damage on both players
-- [ ] Commit: `multiplayer: Phase 4 - co-op collision rules`
+- [x] Test: laser deflection, saber hits, damage on both players
+- [x] Bug fix: Z2's saber collision line stale on host — `_applySnapshot` now calls `updateCollisionLine()` after setting `lightsaber.angle`
+- [x] Commit: `multiplayer: Phase 4 - co-op collision rules`
 
 ### Phase 5 — Polish & resilience [ ]
 - [ ] Local prediction for P2's own character (run physics locally, lerp to authoritative pos on snapshot)
@@ -79,7 +80,13 @@ Branch: `multiplayer` (merge to `master` only when fully ironed out)
 - Phase 3 complete (commit `e8ccb8e`); multiple bug-fix commits
 - Phase 3 fully verified ✓ — both players visible and synced across browsers
 - Phase 4 complete ✓ — **Next: Phase 5 polish**
-- Bug fix: Z1's saber collision line on P2's screen was stale (computed from fake mouse angle before per-frame saberAngle override); fixed by calling ls.updateCollisionLine() after overriding ls.angle
+- Bug fix: Z1's saber collision line on P2's screen was stale; fixed by calling `updateCollisionLine()` after angle override
+- Bug fix: Z2's saber collision line stale on host — `_applySnapshot` now calls `updateCollisionLine()`
+- Bug fix: Z1 saber throw, lightning, and orb not visible on P2's screen — synced via `airbornSaber` position, `totalLightningFired` counter, and `orbActive` flag
+- Arch refactor: `Lightsaber.ghost = true` blocks all input handling on remote saber; `armSpriteKey` getter+setter replaces multi-boolean arm sprite logic — new arm sprites require only one map entry, no sync changes
+- Bug fix: orb position off by one frame (angle stale at orb.update time) — recompute orb x/y after setting ls.angle in override block
+- Bug fix: orb grew indefinitely after bolt fired (shocking=true but orb=null) — use `orbActive: ls.orb !== null` instead of `shocking`
+- Bug fix: saber angle discrepancy between views — `bounceOffset` decay moved outside ghost guard; `bounceOffset` serialized and applied each frame
 
 ### Phase 3 bug fixes (all committed together):
 - `closeLobby()` was calling `network.disconnect()` on successful connect — fixed by splitting into `closeUI()` (success path) vs `closeLobby()` (cancel path)

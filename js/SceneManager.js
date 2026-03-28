@@ -758,6 +758,10 @@ class SceneManager2 {
       this.game.network.onStateReceived = (snap) => {
         this.pendingSnapshot = snap;
         this.lastP1State = snap.p1;
+        // Mark Z1's lightsaber as ghost so its update() skips input handling
+        if (this.Zerlin && this.Zerlin.lightsaber && !this.Zerlin.lightsaber.ghost) {
+          this.Zerlin.lightsaber.ghost = true;
+        }
       };
     }
   }
@@ -890,17 +894,49 @@ class SceneManager2 {
           this.Zerlin.slashingDirection      = s.slashingDirection       || 0;
           this.Zerlin.forceJumping           = s.forceJumping            || false;
           this.Zerlin.crouching              = s.crouching               || false;
-          // Directly set the correct arm sprite, bypassing mouse-driven flip logic
           if (this.Zerlin.lightsaber) {
             var ls = this.Zerlin.lightsaber;
-            if (s.saberFacingRight) {
-              s.saberUp ? ls.faceRightUpSaber() : ls.faceRightDownSaber();
+            // Arm sprite: one call covers all poses, including throw arm for shock/throw
+            ls.setArmSpriteByKey(s.armSpriteKey);
+            ls.angle       = s.saberAngle;
+            ls.bounceOffset = s.saberBounceOffset || 0;
+            ls.hidden      = s.saberHidden || false;
+            ls.updateCollisionLine();
+            // Saber throw: create/destroy ghost AirbornSaber and sync its position
+            if (s.saberThrowing) {
+              if (!ls.airbornSaber) {
+                ls.throwing = true;
+                ls.airbornSaber = new AirbornSaber(this.game, ls, 0, 0);
+              }
+              ls.airbornSaber.x = s.airbornX;
+              ls.airbornSaber.y = s.airbornY;
             } else {
-              s.saberUp ? ls.faceLeftUpSaber() : ls.faceLeftDownSaber();
+              if (ls.airbornSaber) ls.catch();
             }
-            ls.angle  = s.saberAngle;
-            ls.hidden = s.saberHidden || false;
-            ls.updateCollisionLine(); // recompute bladeCollar/bladeTip after angle override
+            // Lightning orb: driven by whether the orb actually exists on host
+            if (s.orbActive) {
+              if (!ls.orb) ls.orb = new LightningOrb(ls);
+              ls.orb.powerTimer = s.orbPowerTimer;
+              // Recompute orb position now that angle is correct
+              ls.orb.x = ls.x + Math.cos(ls.angle) * ls.throwArmLength;
+              ls.orb.y = ls.y + Math.sin(ls.angle) * ls.throwArmLength;
+            } else {
+              ls.orb = null;
+            }
+            // Lightning bolts: spawn any not yet created on this screen
+            if (!ls._p2LightningCreated) ls._p2LightningCreated = 0;
+            var toCreate = (s.totalLightningFired || 0) - ls._p2LightningCreated;
+            if (toCreate < 0) { ls._p2LightningCreated = s.totalLightningFired; toCreate = 0; }
+            if (toCreate > 0 && s.lightningStartX) {
+              var fakeTarget = {
+                x: s.lightningStartX + Math.cos(s.lightningAngle) * 1000 - this.camera.x,
+                y: s.lightningStartY + Math.sin(s.lightningAngle) * 1000
+              };
+              for (var li = 0; li < toCreate; li++) {
+                ls.lightning.push(new LightningBolt(this.game, s.lightningStartX, s.lightningStartY, fakeTarget, 1));
+              }
+              ls._p2LightningCreated = s.totalLightningFired;
+            }
           }
         }
       } else {
@@ -1129,10 +1165,19 @@ class SceneManager2 {
       slashingDirection:      z.slashingDirection,
       forceJumping:           z.forceJumping,
       crouching:              z.crouching,
+      armSpriteKey:     z.lightsaber ? z.lightsaber.armSpriteKey : 'rightUp',
       saberAngle:       z.lightsaber ? z.lightsaber.angle       : 0,
       saberHidden:      z.lightsaber ? z.lightsaber.hidden      : false,
-      saberFacingRight: z.lightsaber ? z.lightsaber.facingRight : true,
-      saberUp:          z.lightsaber ? z.lightsaber.saberUp     : true,
+      saberThrowing:    z.lightsaber ? z.lightsaber.throwing    : false,
+      saberBounceOffset: z.lightsaber ? z.lightsaber.bounceOffset : 0,
+      airbornX:         (z.lightsaber && z.lightsaber.airbornSaber) ? z.lightsaber.airbornSaber.x : 0,
+      airbornY:         (z.lightsaber && z.lightsaber.airbornSaber) ? z.lightsaber.airbornSaber.y : 0,
+      orbActive:        z.lightsaber ? z.lightsaber.orb !== null : false,
+      orbPowerTimer:    (z.lightsaber && z.lightsaber.orb) ? z.lightsaber.orb.powerTimer : 0,
+      totalLightningFired: z.lightsaber ? (z.lightsaber.totalLightningFired || 0) : 0,
+      lightningStartX:  z.lightsaber ? (z.lightsaber.lastLightningStartX || 0) : 0,
+      lightningStartY:  z.lightsaber ? (z.lightsaber.lastLightningStartY || 0) : 0,
+      lightningAngle:   z.lightsaber ? (z.lightsaber.lastLightningAngle  || 0) : 0,
     };
   }
 
@@ -1146,7 +1191,10 @@ class SceneManager2 {
     zerlin.currentForce  = state.force;
     zerlin.direction = state.direction;
     zerlin.falling   = state.falling;
-    if (zerlin.lightsaber) zerlin.lightsaber.angle = state.saberAngle;
+    if (zerlin.lightsaber) {
+      zerlin.lightsaber.angle = state.saberAngle;
+      zerlin.lightsaber.updateCollisionLine();
+    }
     // Sync facing direction (also recomputes bounding box)
     if (state.facingRight !== zerlin.facingRight) {
       state.facingRight ? zerlin.faceRight() : zerlin.faceLeft();

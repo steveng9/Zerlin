@@ -773,6 +773,8 @@ class Lightsaber extends Entity {
     this.homingLasers = false;
     this.lightning = [];
     this.orb = null;
+    this.totalLightningFired = 0;
+    this.ghost = false; // set true on remote player; skips input handling in update()
     this.bounceOffset = 0;
     this.setUpSaberImages();
     this.faceRightUpSaber();
@@ -801,18 +803,19 @@ class Lightsaber extends Entity {
     }
 
 
-    // rotate
-    if (this.game.mouse) {
-      this.angle = Math.atan2(this.game.mouse.y - this.y, this.game.mouse.x + this.camera.x - this.x);
-      // decay saber bounce offset back to zero
-      if (this.bounceOffset !== 0) {
-        var decay = Constants.ZerlinConstants.SABER_BOUNCE_DECAY_RATE * this.game.clockTick;
-        if (Math.abs(this.bounceOffset) <= decay) {
-          this.bounceOffset = 0;
-        } else {
-          this.bounceOffset -= Math.sign(this.bounceOffset) * decay;
-        }
+    // Bounce offset decay always runs (ghost sabers need it too)
+    if (this.bounceOffset !== 0) {
+      var decay = Constants.ZerlinConstants.SABER_BOUNCE_DECAY_RATE * this.game.clockTick;
+      if (Math.abs(this.bounceOffset) <= decay) {
+        this.bounceOffset = 0;
+      } else {
+        this.bounceOffset -= Math.sign(this.bounceOffset) * decay;
       }
+    }
+
+    // rotate + input handling (skipped for remote/ghost saber)
+    if (!this.ghost && this.game.mouse) {
+      this.angle = Math.atan2(this.game.mouse.y - this.y, this.game.mouse.x + this.camera.x - this.x);
         //  handle attacks
         if (this.game.keys['leftClick'] && this.game.keys['ShiftLeft']) {
           if (this.orb === null) {
@@ -1031,6 +1034,28 @@ class Lightsaber extends Entity {
     }
   }
 
+  get armSpriteKey() {
+    if (this.image === this.faceRightUpSaberImage)   return 'rightUp';
+    if (this.image === this.faceLeftUpSaberImage)    return 'leftUp';
+    if (this.image === this.faceRightDownSaberImage) return 'rightDown';
+    if (this.image === this.faceLeftDownSaberImage)  return 'leftDown';
+    if (this.image === this.faceRightThrowImage)     return 'rightThrow';
+    if (this.image === this.faceLeftThrowImage)      return 'leftThrow';
+    return 'rightUp';
+  }
+
+  setArmSpriteByKey(key) {
+    const map = {
+      rightUp:    () => this.faceRightUpSaber(),
+      leftUp:     () => this.faceLeftUpSaber(),
+      rightDown:  () => this.faceRightDownSaber(),
+      leftDown:   () => this.faceLeftDownSaber(),
+      rightThrow: () => this.faceRightThrowing(),
+      leftThrow:  () => this.faceLeftThrowing(),
+    };
+    if (map[key]) map[key]();
+  }
+
   enableSplitLasers() {
     this.splitShotTimer = puc.SPLIT_SHOT_TIME;
     this.splitLasers = true;
@@ -1086,10 +1111,15 @@ class Lightsaber extends Entity {
   }
 
   shock() {
+    this.lastLightningStartX = this.x + Math.cos(this.angle) * this.throwArmLength;
+    this.lastLightningStartY = this.y + Math.sin(this.angle) * this.throwArmLength;
+    this.lastLightningAngle  = Math.atan2(this.game.mouse.y - this.lastLightningStartY,
+                                           this.game.mouse.x + this.camera.x - this.lastLightningStartX);
     while (this.orb && this.orb.powerTimer > 0 && this.Zerlin.currentForce >= zc.Z_LIGHTNING_FORCE_COST) {
       this.Zerlin.currentForce -= zc.Z_LIGHTNING_FORCE_COST;
       this.orb.powerTimer -= 1;
-      this.lightning.push(new LightningBolt(this.game, this.x + Math.cos(this.angle) * this.throwArmLength, this.y + Math.sin(this.angle) * this.throwArmLength, this.game.mouse, 1));
+      this.lightning.push(new LightningBolt(this.game, this.lastLightningStartX, this.lastLightningStartY, this.game.mouse, 1));
+      this.totalLightningFired++;
     }
     this.orb = null;
   }
