@@ -24,7 +24,6 @@
   <script type="text/javascript" src="./js/PowerUp.js"></script>
   <script type="text/javascript" src="./js/CheckPoint.js"></script>
 
-
   <script type="text/javascript" src="./js/howler.js"></script>
   <script type="text/javascript" src="./js/SoundEngine.js"></script>
   <script type="text/javascript" src="./js/Boss.js"></script>
@@ -32,6 +31,20 @@
   <!-- Multiplayer -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script type="text/javascript" src="./js/NetworkManager.js"></script>
+
+  <!-- Architecture: UI entity classes (loaded after SceneManager.js so `smc` constant is available) -->
+  <script type="text/javascript" src="./js/SceneEntities.js"></script>
+
+  <!-- Architecture: LevelLoader (entity factory, loaded after all entity classes) -->
+  <script type="text/javascript" src="./js/LevelLoader.js"></script>
+
+  <!-- Architecture: Scene classes (loaded after all entity/UI classes) -->
+  <script type="text/javascript" src="./js/scenes/OpeningScene.js"></script>
+  <script type="text/javascript" src="./js/scenes/LevelTransitionScene.js"></script>
+  <script type="text/javascript" src="./js/scenes/CollectionScene.js"></script>
+  <script type="text/javascript" src="./js/scenes/CreditsScene.js"></script>
+  <script type="text/javascript" src="./js/scenes/LevelScene.js"></script>
+  <script type="text/javascript" src="./js/scenes/TrainingGroundScene.js"></script>
 
   <script type="text/javascript" src="./js/Main.js"></script>
 </head>

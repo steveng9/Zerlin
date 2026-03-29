@@ -32,7 +32,15 @@ const smc = Constants.SceneManagerConstants;
 const lvlConst = Constants.LevelConstants;
 
 /**
- * Manage scene transitions between levels and cinematics.
+ * Thin scene router.
+ *
+ * Owns shared infrastructure (camera, entities arrays, Zerlin, collision
+ * manager, etc.) and delegates all update/draw work to the active scene
+ * object via `this.currentScene`.
+ *
+ * Scene transition methods (start*Scene) perform any SceneManager-level
+ * setup, then construct the appropriate scene class and assign it to
+ * `this.currentScene`.
  */
 class SceneManager2 {
 
@@ -40,12 +48,10 @@ class SceneManager2 {
     this.game = game;
     this.camera = new Camera(this, 0, 0, this.game.ctx.canvas.width, this.game.ctx.canvas.height);
     this.checkPoint = new CheckPoint(this.game, 0, 0);
-    this.sceneEntities = [];
     this.infiniteHealth = true;
     this.Zerlin = new Zerlin(this.game, this.camera, this);
     this.boss = null;
     this.collisionManager = new CollisionManager(this.game, this);
-    /* Edit this to change levels */
     this.levelNumber = 1;
     this.newLevel = true;
     this.canPause = false;
@@ -55,7 +61,10 @@ class SceneManager2 {
       this.game.assetManager.getAsset('img/ui/music_menu_xmusic.png'),
       this.game.assetManager.getAsset('img/ui/music_menu_xfx.png')
     ]);
+    this.currentScene = null;
   }
+
+  // ── Bootstrap ─────────────────────────────────────────────────────────────
 
   init() {
     this.buildLevels();
@@ -140,7 +149,6 @@ class SceneManager2 {
     this.levels = [];
     this.level = null;
     this.levelBackgrounds = [];
-    //this.levels.push(new Level(this.game, this, lvlConst.BOSS_TEST_LAYOUT, LEVEL_ONE_BACKGROUNDS, LEVEL_ONE_TILES));
     this.levels.push(new Level(this.game, this, lvlConst.MIKE_LEVEL_ONE, LEVEL_ONE_BACKGROUNDS, LEVEL_ONE_TILES));
     this.levels.push(new Level(this.game, this, lvlConst.CITY_LEVEL, CITY_LEVEL_BACKGROUNDS, CITY_LEVEL_TILES));
     this.levels.push(new Level(this.game, this, lvlConst.MIKE_LEVEL_THREE, LEVEL_THREE_BACKGROUNDS, LEVEL_THREE_TILES));
@@ -153,30 +161,156 @@ class SceneManager2 {
     this.trainingLevel = this.trainingLevels[0];
   }
 
+  // ── Scene dispatch ────────────────────────────────────────────────────────
+
+  update() {
+    this.currentScene.update();
+  }
+
+  draw() {
+    this.currentScene.draw();
+  }
+
+  // ── Scene transitions ─────────────────────────────────────────────────────
+
+  startOpeningScene() {
+    this.restoreOriginalLaserSpeeds();
+    this.canPause = false;
+    document.getElementById("trainingControls").style.display = "none";
+    this.currentScene = new OpeningScene(this);
+  }
+
+  startLevelTransitionScene() {
+    this.canPause = false;
+    this.currentScene = new LevelTransitionScene(this);
+  }
+
+  startLevelScene() {
+    this.restoreOriginalLaserSpeeds();
+    document.getElementById("trainingControls").style.display = "none";
+    this.camera.x = 0;
+    this.camera.y = 0;
+    this.level = this.levels[this.levelNumber - 1];
+    if (this.newLevel) {
+      this.checkPoint = new CheckPoint(this.game, this.camera.width * cc.ZERLIN_POSITION_ON_SCREEN, 0);
+    }
+    this.newLevel = false;
+    this.droids = [];
+    this.lasers = [];
+    this.powerups = [];
+    this.otherEntities = [];
+    this.activePowerups = [];
+    this.boss = null;
+    this.level.set();
+    this.addEntity(new HealthStatusBar(this.game, this, 25, 25));
+    this.addEntity(new ForceStatusBar(this.game, this, 50, 50));
+    this.Zerlin.reset();
+    this.canPause = false;
+    this.game.audio.playSoundFx(this.game.audio.lightsaber, 'lightsaberOn');
+    this.game.audio.playSoundFx(this.game.audio.saberHum);
+    this.currentScene = new LevelScene(this);
+  }
+
+  startCollectionScene() {
+    this.canPause = false;
+    this.currentScene = new CollectionScene(this);
+  }
+
+  startCreditsScene() {
+    this.canPause = false;
+    this.currentScene = new CreditsScene(this);
+  }
+
+  startTrainingGroundScene() {
+    this._setupTrainingGround();
+    this.currentScene = new TrainingGroundScene(this, false);
+  }
+
+  startMultiplayerTrainingScene() {
+    this._setupTrainingGround();
+    this.currentScene = new TrainingGroundScene(this, true);
+  }
+
+  /**
+   * Shared setup for both single-player and multiplayer training sessions.
+   * Resets entity arrays, loads the level, and initialises training config.
+   * Does NOT create a scene — callers do that so each can pass the right flag.
+   */
+  _setupTrainingGround() {
+    this.game.audio.campFire.stop();
+    this.game.audio.endAllSoundFX();
+    this.camera.x = 0;
+    this.camera.y = 0;
+    this.level = this.trainingLevel;
+    this.checkPoint = new CheckPoint(this.game, this.camera.width * cc.ZERLIN_POSITION_ON_SCREEN, 0);
+    this._nextEntityId = 1;
+    this.droids = [];
+    this.lasers = [];
+    this.powerups = [];
+    this.otherEntities = [];
+    this.activePowerups = [];
+    this.boss = null;
+    this.level.set();
+
+    // Initialize training config only on first entry; preserve across respawns
+    if (!this.enabledDroidTypes) {
+      this.enabledDroidTypes = new Set();
+      if (smc.TRAINING_DEFAULT_BASIC)      this.enabledDroidTypes.add('BasicDroid');
+      if (smc.TRAINING_DEFAULT_SCATTER)    this.enabledDroidTypes.add('ScatterShotDroid');
+      if (smc.TRAINING_DEFAULT_SLOW_BURST) this.enabledDroidTypes.add('SlowBurstDroid');
+      if (smc.TRAINING_DEFAULT_FAST_BURST) this.enabledDroidTypes.add('FastBurstDroid');
+      if (smc.TRAINING_DEFAULT_SNIPER)     this.enabledDroidTypes.add('SniperDroid');
+      if (smc.TRAINING_DEFAULT_MULTISHOT)  this.enabledDroidTypes.add('MultishotDroid');
+    }
+    if (this.trainingTargetDroids === undefined) this.trainingTargetDroids = smc.TRAINING_DEFAULT_DROIDS;
+    if (!this.trainingOrigLaserSpeeds) {
+      this.trainingOrigLaserSpeeds = {
+        basic:     Constants.DroidBasicConstants.BASIC_DROID_LASER_SPEED,
+        leggy:     Constants.DroidBasicConstants.LEGGY_DROID_LASER_SPEED,
+        slowburst: Constants.DroidBasicConstants.SLOWBURST_DROID_LASER_SPEED,
+        fastburst: Constants.DroidBasicConstants.FASTBURST_DROID_LASER_SPEED,
+        sniper:    Constants.DroidBasicConstants.SNIPER_DROID_LASER_SPEED
+      };
+    }
+    if (this.trainingLaserMult === undefined) this.trainingLaserMult = smc.TRAINING_DEFAULT_LASER_MULT;
+    this.setTrainingLaserSpeed(this.trainingLaserMult);
+
+    this.addEntity(new HealthStatusBar(this.game, this, 25, 25));
+    this.addEntity(new ForceStatusBar(this.game, this, 50, 50));
+    this.Zerlin.maxHealth = 15;
+    this.Zerlin.maxForce = 15;
+    this.Zerlin.reset();
+    this.Zerlin.setHealth();
+
+    this.canPause = false;
+    document.getElementById("trainingControls").style.display = "block";
+    this.game.audio.playSoundFx(this.game.audio.lightsaber, 'lightsaberOn');
+    this.game.audio.playSoundFx(this.game.audio.saberHum);
+  }
+
+  // ── Entity management ─────────────────────────────────────────────────────
+
   setCheckPoint(checkPoint) {
     this.checkPoint = checkPoint;
   }
+
   addEntity(entity) {
-    // console.log('added entity');
     this.otherEntities.push(entity);
   }
 
   addDroid(droid) {
-    // console.log('added droid');
     this.droids.push(droid);
-    // this.otherEntities.push(droid);
   }
 
   addLaser(laser) {
-    // console.log('added laser');
     if (!laser.id) laser.id = this._nextEntityId++;
     this.lasers.push(laser);
-    // this.otherEntities.push(laser);
   }
 
   addPowerup(powerup) {
     this.powerups.push(powerup);
   }
+
   addActivePowerup(powerup) {
     if (this.activePowerups.length == 0) {
       this.activePowerups.push(new PowerupStatusBar(this.game, this, 0, 0, powerup));
@@ -198,1312 +332,36 @@ class SceneManager2 {
     }
   }
 
-  pause() { // todo: pause music as well
+  // ── Pause ─────────────────────────────────────────────────────────────────
+
+  pause() {
     if (this.canPause) {
-      // this.game.audio.endAllSoundFX();
       this.paused = true;
       this.game.timer.disable();
     }
   }
 
   unpause() {
-    // if (!this.game.audio.soundFxMuted) {
-    // 	this.game.audio.unMuteSoundFX();
-    // }
     this.paused = false;
     this.game.timer.enable();
   }
 
-  //________________________________________________________
-  startOpeningScene() {
-    this.restoreOriginalLaserSpeeds();
-    document.getElementById("trainingControls").style.display = "none";
-    // empty this.sceneEntities array
-    // load sceneEntities for openeing scene animation
-    this.sequence = 1;
-    this.update = this.openingSceneUpdate;
-    this.draw = this.openingSceneDraw;
-    this.sceneEntities = [];
-    this.sceneEntities.push(new ParallaxRotatingBackground(this.game, this, 'img/levels/opening/opening stars.png', 1, 15000));
-    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/levels/opening/opening oasis 6.png', 1, 15000, 0, -50));
-    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/levels/opening/opening oasis 5.png', 1, 9500, 0, 30));
-    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/levels/opening/opening oasis 4.png', 1, 6000, 0, -20));
-    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/levels/opening/opening oasis 3.png', 1, 2400, 0, -20));
-    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/levels/opening/opening oasis 2.png', 1, 1300, 0, -265));
-    this.sceneEntities.push(new ParallaxScrollBackground(this.game, this, 'img/levels/opening/opening oasis 1.png', 1, 900, 0, -170));
-    //constructor(spriteSheet, startX, startY, frameWidth, frameHeight, frameDuration, frames, loop, reverse, scale) {
-    this.sceneEntities.push(new ParallaxAnimatedBackground(this.game, this,
-      new Animation(this.game.assetManager.getAsset('img/hero/zerlin at fire.png'), 0, 0, 600, 600, .125, 6, true, false, .5),
-      1, 800, 470, 450));
-    this.sceneEntities.push(new Overlay(this.game, true, smc.OPENING_OVERLAY_TIME));
-    this.game.audio.playSoundFx(this.game.audio.campFire);
+  // ── Multiplayer targeting ─────────────────────────────────────────────────
 
-    this.seq1EndTime = smc.OPENING_SEQUENCE_1_TIME;
-    this.seq2EndTime = this.seq1EndTime + smc.OPENING_MESSAGE_TIME;
-    this.seq3EndTime = this.seq2EndTime + smc.OPENING_TITLE_TIME;
-    this.seq4EndTime = this.seq3EndTime + smc.OPENING_SEQUENCE_4_TIME;
-    this.openingSceneTimer = 0;
-
-
-    // start opening scene music
-
-    //link up html buttons to try to login or register a user
-    this.playGame = false; //for now use button to start the game
-    document.getElementById("loginButton").addEventListener('click', () => {
-      // }
-
-      //user can't skip opening camera pan down
-      if (this.openingSceneTimer > smc.OPENING_SCENE_STOP_CAMERA_PAN) {
-        this.playGame = true;
-        document.getElementById("formOverlay").style.display = "none";
-      }
-    });
-  }
-
-  openingSceneUpdate() {
-    if (!this.canPause && this.game.keys['Enter']) {
-      this.game.audio.campFire.stop();
-      this.startCollectionScene(); //for going strait into the lvl
-      document.getElementById("formOverlay").style.display = "none";
-    }
-
-    this.musicMenu.update();
-
-    this.openingSceneTimer += this.game.clockTick;
-
-    // sequence 1: Camera panning down on Zerlin sitting by the fire
-    if (this.openingSceneTimer < smc.OPENING_SCENE_CAMERA_PAN_TIME) {
-      this.camera.y = -Math.pow(this.openingSceneTimer - smc.OPENING_SCENE_CAMERA_PAN_TIME, 2) * 280;
-    } else if (!this.seq1FadingOut && this.openingSceneTimer > this.seq1EndTime - smc.OPENING_OVERLAY_TIME) {
-      this.seq1FadingOut = true;
-      this.sceneEntities.push(new Overlay(this.game, false, smc.OPENING_OVERLAY_TIME));
-
-    // sequence 2: opening message
-    } else if (this.sequence == 1 && this.openingSceneTimer > this.seq1EndTime) {
-      this.game.audio.campFire.stop();
-      this.sequence = 2;
-      this.sceneEntities.pop(); // remove previous overlay
-      this.sceneEntities.push(new TextScreen(this.game, smc.OPENING_MESSAGE, "white", smc.OPENING_MESSAGE_TIME));
-      this.sceneEntities.push(new Overlay(this.game, true, smc.OPENING_OVERLAY_TIME));
-    } else if (!this.seq2FadingOut && this.openingSceneTimer > this.seq2EndTime - smc.OPENING_OVERLAY_TIME) {
-      this.seq2FadingOut = true;
-      this.sceneEntities.push(new Overlay(this.game, false, smc.OPENING_OVERLAY_TIME));
-
-    // sequence 3: Title
-    } else if (this.sequence == 2 && this.openingSceneTimer > this.seq2EndTime) {
-      this.sceneEntities.pop(); // remove previous overlay
-      this.sequence = 3;
-      this.sceneEntities.push(new TextScreen(this.game, "", "white"));
-      this.sceneEntities.push(new ParallaxAnimatedBackground(this.game, this,
-        new Animation(this.game.assetManager.getAsset('img/ui/title.png'), 0, 0, 1026, 342, .145, 66, false, false, .5),
-        1, 200, (this.game.surfaceWidth - 1026 * .5) / 2, (this.game.surfaceHeight - 342 * .5) / 2));
-      this.sceneEntities.push(new Overlay(this.game, true, smc.OPENING_OVERLAY_TIME * .8));
-    } else if (!this.seq3FadingOut && this.openingSceneTimer > this.seq3EndTime - smc.OPENING_OVERLAY_TIME) {
-      this.seq3FadingOut = true;
-      this.sceneEntities.push(new Overlay(this.game, false, smc.OPENING_OVERLAY_TIME * .8));
-
-    // sequence 4: Zerlin takes off in rocket
-    } else if (this.sequence == 3 && this.openingSceneTimer > this.seq3EndTime) {
-      this.sceneEntities.pop(); // remove previous overlay
-      this.sceneEntities.pop(); // remove title
-      this.sceneEntities.pop(); // remove title background
-      this.sceneEntities.pop(); // remove Zerlin by fire
-      this.sequence = 4;
-      // this.sceneEntities.pop(); // remove previous title animation
-      this.camera.x = 1400;
-      this.sceneEntities.push(new ParallaxAnimatedBackground(this.game, this,
-        new Animation(this.game.assetManager.getAsset('img/effects/ship take off.png'), 0, 0, 600, 600, .18, 38, false, false, 1.5),
-        1, 800, 470, -150));
-      this.sceneEntities.push(new Overlay(this.game, true, smc.OPENING_OVERLAY_TIME));
-    } else if (this.sequence == 4) {
-
-      if (!this.playTakeOffSound && this.openingSceneTimer > this.seq3EndTime + .5) {
-        this.playTakeOffSound = true;
-        this.game.audio.playSoundFx(this.game.audio.shipTakeOff);
-      }
-
-      this.seq4CameraPanTimer += this.game.clockTick;
-      if (!this.startSeq4CameraPan && this.openingSceneTimer > this.seq4EndTime - smc.OPENING_SCENE_CAMERA_PAN_TIME) {
-        this.startSeq4CameraPan = true;
-        this.seq4CameraPanTimer = 0;
-      } else if (this.startSeq4CameraPan && this.openingSceneTimer <= this.seq4EndTime) {
-        this.camera.y = -Math.pow(this.seq4CameraPanTimer, 2) * 280;
-      }
-
-      if (!this.addedTwinkleStar && this.seq4CameraPanTimer > 4.7) {
-        this.addedTwinkleStar = true;
-        this.sceneEntities.push(new ParallaxAnimatedBackground(this.game, this,
-          new Animation(this.game.assetManager.getAsset('img/effects/twinkling star.png'), 0, 0, 64, 64, .05, 14, false, false, .9),
-          1, 99999999, 964, 95));
-      }
-
-      if (!this.seq4FadingOut && this.openingSceneTimer > this.seq4EndTime - smc.OPENING_OVERLAY_TIME) {
-        this.seq4FadingOut = true;
-        this.sceneEntities.push(new Overlay(this.game, false, smc.OPENING_OVERLAY_TIME));
-      }
-
-      // transition to level
-      if (this.openingSceneTimer > this.seq4EndTime) {
-        this.startCollectionScene();
-      }
-    }
-
-
-    for (let i = this.sceneEntities.length - 1; i >= 0; i--) {
-      this.sceneEntities[i].update();
-      if (this.sceneEntities[i].removeFromWorld) {
-        this.sceneEntities.splice(i, 1);
-      }
-    }
-  }
-
-  openingSceneDraw() {
-    for (let i = 0; i < this.sceneEntities.length; i++) {
-      this.sceneEntities[i].draw();
-    }
-    this.musicMenu.draw();
-
-    // click to continue message
-    // this.game.ctx.fillStyle = "#777777";
-    // this.game.ctx.textAlign = "center";
-    // this.game.ctx.font = '20px ' + smc.GAME_FONT;
-    // this.game.ctx.fillText("click to continue (but seriously, watch the opening scene)", this.game.surfaceWidth / 2, 600);
-  }
-
-  //________________________________________________________
-  startLevelTransitionScene() {
-    this.game.keys['Enter'] = false;
-    this.levelTransitionTimer = 0;
-    this.update = this.levelTransitionUpdate;
-    this.draw = this.levelTransitionDraw;
-    this.canPause = false;
-
-    this.initiallyPaused = false;
-    this.sceneEntities = [];
-
-    switch (this.levelNumber) {
-      case (1):
-        this.sceneEntities.push(new TextScreen(this.game, smc.LEVEL_ONE_TEXT));
-        break;
-      case (2):
-        this.sceneEntities.push(new TextScreen(this.game, smc.LEVEL_TWO_MESSAGE));
-        break;
-      case (3):
-        this.sceneEntities.push(new TextScreen(this.game, smc.LEVEL_THREE_MESSAGE));
-        break;
-    }
-
-    // this.sceneEntities.push(new TextScreen(this.game, smc.LEVEL_ONE_TEXT));
-    this.sceneEntities.push(new Overlay(this.game, true, smc.LEVEL_TRANSITION_OVERLAY_TIME));
-    this.startedFinalOverlay = false;
-    this.overlayTimer = 0;
-  }
-
-  levelTransitionUpdate() {
-    if (!this.startedFinalOverlay && this.game.keys['Enter']) {
-      this.startedFinalOverlay = true;
-      this.sceneEntities.push(new Overlay(this.game, false, smc.LEVEL_TRANSITION_OVERLAY_TIME));
-      this.overlayTimer = smc.LEVEL_TRANSITION_OVERLAY_TIME;
-    }
-    this.musicMenu.update();
-    this.overlayTimer -= this.game.clockTick;
-
-    for (let i = this.sceneEntities.length - 1; i >= 0; i--) {
-      this.sceneEntities[i].update();
-      if (this.sceneEntities[i].removeFromWorld) {
-        this.sceneEntities.splice(i, 1);
-      }
-    }
-    if (this.startedFinalOverlay && this.overlayTimer <= 0) {
-      this.startLevelScene();
-    }
-  }
-
-  levelTransitionDraw() {
-    for (let i = 0; i < this.sceneEntities.length; i++) {
-      this.sceneEntities[i].draw();
-    }
-    this.musicMenu.draw();
-
-    // click to continue message
-    if (!this.startedFinalOverlay) {
-      this.game.ctx.fillStyle = "#777777";
-      this.game.ctx.textAlign = "center";
-      this.game.ctx.font = '20px ' + smc.GAME_FONT;
-      this.game.ctx.fillText("press enter to continue", this.game.surfaceWidth / 2, 600);
-    }
-  }
-
-
-  //________________________________________________________
-  startLevelScene() {
-    this.restoreOriginalLaserSpeeds();
-    document.getElementById("trainingControls").style.display = "none";
-    // empty this.sceneEntities array
-    this.levelSceneTimer = 0;
-    this.update = this.levelUpdate;
-    this.draw = this.levelDraw;
-    this.camera.x = 0;
-    this.camera.y = 0;
-
-    // load game engine with tiles for current level
-    this.level = this.levels[this.levelNumber - 1];
-    if (this.newLevel) {
-      this.checkPoint = new CheckPoint(this.game, this.camera.width * cc.ZERLIN_POSITION_ON_SCREEN, 0);
-    }
-    this.newLevel = false; //if this is set to true when the next level is loaded, then reset the checkpoint.
-    this.droids = [];
-    this.lasers = [];
-    this.powerups = [];
-    this.otherEntities = [];
-    this.activePowerups = [];
-    this.boss = null;
-    this.bossMusicSwitched = false;
-    this.bossHealthBar = null;
-    this.level.set();
-    this.addEntity(new HealthStatusBar(this.game, this, 25, 25)); //put these in scene manager??
-    this.addEntity(new ForceStatusBar(this.game, this, 50, 50));
-    this.Zerlin.reset();
-    this.wonLevel = false;
-
-    this.initiallyPaused = false;
-    this.canPause = false;
-    this.sceneEntities = [];
-    if (this.levelNumber == 3) {
-      this.sceneEntities.push(new ParallaxSnowBackground(this.game, this, 300));
-      this.sceneEntities.push(new ParallaxSnowBackground(this.game, this, 200));
-      this.sceneEntities.push(new ParallaxSnowBackground(this.game, this, 100));
-    }
-    this.startedFinalOverlay = false;
-    this.startNewScene = false;
-
-    this.game.audio.playSoundFx(this.game.audio.lightsaber, 'lightsaberOn');
-    this.game.audio.playSoundFx(this.game.audio.saberHum);
-  }
-
-  levelUpdate() {
-    this.levelSceneTimer += this.game.clockTick;
-    this.musicMenu.update();
-
-    // this.musicMenu.update();
-    // if (this.boss && !this.game.audio.bossSongPlaying) {
-    //   this.game.audio.playBossSong();
-    // }
-
-
-    if (!this.paused) {
-      if (this.boss && !this.bossHealthBar) {
-        this.bossHealthBar = new BossHealthStatusBar(
-          this.game,
-          this.game.surfaceWidth * 0.25,
-          680,
-          this.boss);
-      }
-      this.Zerlin.update();
-      this.camera.update();
-      this.level.update();
-
-      for (var i = this.droids.length - 1; i >= 0; i--) {
-        this.droids[i].update();
-        if (this.droids[i].removeFromWorld) {
-          this.droids.splice(i, 1);
-        }
-      }
-      for (var i = this.lasers.length - 1; i >= 0; i--) {
-        this.lasers[i].update();
-        if (this.lasers[i].removeFromWorld) {
-          this.lasers.splice(i, 1);
-        }
-      }
-      for (var i = this.powerups.length - 1; i >= 0; i--) {
-        this.powerups[i].update();
-        if (this.powerups[i].removeFromWorld) {
-          this.powerups.splice(i, 1);
-        }
-      }
-      for (var i = this.activePowerups.length - 1; i >= 0; i--) {
-        this.activePowerups[i].update(i);
-        if (this.activePowerups[i].removeFromWorld) {
-          this.activePowerups.splice(i, 1);
-        }
-      }
-      for (var i = this.otherEntities.length - 1; i >= 0; i--) {
-        this.otherEntities[i].update();
-        if (this.otherEntities[i].removeFromWorld) {
-          this.otherEntities.splice(i, 1);
-        }
-      }
-
-      //if the boss has been spawned update him and his health bar
-      if (this.boss) {
-        this.boss.update();
-        if (!this.bossMusicSwitched) {
-          this.game.audio.playBossSong();
-          this.bossMusicSwitched = true;
-        }
-      }
-      if (this.bossHealthBar) {
-        this.bossHealthBar.update();
-      }
-
-      this.collisionManager.handleCollisions();
-
-      for (let i = this.sceneEntities.length - 1; i >= 0; i--) {
-        this.sceneEntities[i].update();
-        if (this.sceneEntities[i].removeFromWorld) {
-          this.sceneEntities.splice(i, 1);
-        }
-      }
-    }
-
-    if (!this.initiallyPaused && this.levelSceneTimer > smc.PAUSE_TIME_AFTER_START_LEVEL) {
-      this.initiallyPaused = true;
-      this.canPause = true;
-      this.pause();
-    }
-
-
-    if (this.boss && !this.boss.alive || (this.boss == null && this.level.unspawnedBoss == null
-          && this.droids.length == 0 && this.Zerlin.x >= this.level.getLengthAtI(5)) && !this.wonLevel) {
-            //also need to check if zerlin is near the end of the level when there is no boss.
-      console.log("level won");
-      this.canPause = false;
-  		this.wonLevel = true;
-  		this.boss = null;
-  		this.saveProgress();
-  		this.startedFinalOverlay = true;
-  		this.timeSinceBossDeath = 0;
-  		this.sceneEntities.push(new Overlay(this.game, false, smc.LEVEL_COMPLETE_OVERLAY_TIME));
-  		for (var i = this.droids.length - 1; i >= 0; i--) {
-  			this.droids[i].explode();
-  		}
-  	}
-  	if (this.wonLevel) {
-      this.newLevel = true;
-  		this.timeSinceBossDeath += this.game.clockTick;
-  		if (this.timeSinceBossDeath > smc.LEVEL_COMPLETE_OVERLAY_TIME) {
-  			this.levelNumber++;
-  			if (this.levelNumber > smc.NUM_LEVELS) {
-  				this.startCreditsScene();
-  			} else {
-  				this.startCollectionScene();
-  			}
-  		}
-  	}
-    if (!this.startedFinalOverlay && !this.Zerlin.alive) {
-      this.canPause = false;
-      if (this.levelSceneTimer > this.Zerlin.timeOfDeath + this.Zerlin.deathAnimation.totalTime) {
-        this.startedFinalOverlay = true;
-        this.sceneEntities.push(new Overlay(this.game, false, smc.LEVEL_TRANSITION_OVERLAY_TIME));
-        this.sceneEntities.push(new GameOverTextScreen(this.game));
-        this.stopLevelTime = this.levelSceneTimer + 6;
-        //could play death song or something
-        // this.game.audio.playBackgroundSong();
-        this.startNewScene = true;
-      }
-    }
-
-    if ((this.levelSceneTimer > this.stopLevelTime && this.startNewScene)
-     || (!this.Zerlin.alive && this.game.keys['Enter'])) {
-      this.game.audio.endAllSoundFX();
-      this.startLevelTransitionScene();
-      this.startNewScene = false;
-    }
-  }
-
-  levelDraw() {
-    this.camera.draw();
-    this.level.draw();
-    this.Zerlin.draw();
-    for (var i = 0; i < this.droids.length; i++) {
-      this.droids[i].draw(this.ctx);
-    }
-    for (var i = 0; i < this.lasers.length; i++) {
-      this.lasers[i].draw(this.ctx);
-    }
-    if (this.boss) { // draw the boss and health bar if spawned
-      this.boss.draw();
-    }
-    if (this.bossHealthBar) {
-      this.bossHealthBar.draw();
-    }
-    for (var i = 0; i < this.powerups.length; i++) {
-      this.powerups[i].draw(this.ctx);
-    }
-    for (var i = 0; i < this.activePowerups.length; i++) {
-      this.activePowerups[i].draw();
-    }
-    for (var i = 0; i < this.otherEntities.length; i++) {
-      this.otherEntities[i].draw(this.ctx);
-    }
-    for (let i = 0; i < this.sceneEntities.length; i++) {
-      this.sceneEntities[i].draw();
-    }
-
-    if (this.paused) {
-      this.pauseScreen.draw();
-    }
-    this.musicMenu.draw();
-  }
-
-  //________________________________________________________
-  startCollectionScene() {
-    this.update = this.collectionUpdate;
-    this.draw = this.collectionDraw;
-    this.sceneEntities = [];
-    this.canPause = false;
-
-    this.timer = 0;
-    this.collectionScreen = new AttributeCollectionScreen(this.game, this, 5);
-    this.sceneEntities.push(this.collectionScreen);
-    this.sceneEntities.push(new Overlay(this.game, true, smc.LEVEL_TRANSITION_OVERLAY_TIME));
-    this.startedFinalOverlay = false;
-    this.overlayTimer = 0;
-
-
-  }
-
-  collectionUpdate() {
-    this.musicMenu.update();
-    this.timer += this.game.clockTick;
-    this.overlayTimer -= this.game.clockTick;
-    for (let i = this.sceneEntities.length - 1; i >= 0; i--) {
-      this.sceneEntities[i].update();
-      if (this.sceneEntities[i].removeFromWorld) {
-        this.sceneEntities.splice(i, 1);
-      }
-    }
-
-    if (this.collectionScreen.continue && !this.startedFinalOverlay) {
-      this.startedFinalOverlay = true;
-      this.sceneEntities.push(new Overlay(this.game, false, smc.LEVEL_TRANSITION_OVERLAY_TIME));
-      this.overlayTimer = smc.LEVEL_TRANSITION_OVERLAY_TIME;
-    }
-    if (this.startedFinalOverlay && this.overlayTimer <= 0) {
-      this.startLevelTransitionScene();
-    }
-  }
-
-  collectionDraw() {
-    for (let i = 0; i < this.sceneEntities.length; i++) {
-      this.sceneEntities[i].draw();
-    }
-    this.musicMenu.draw();
-  }
-
-
-  //________________________________________________________
-	startCreditsScene() {
-		this.creditsTimer = 0;
-		this.update = this.creditsUpdate;
-		this.draw = this.creditsDraw;
-		this.canPause = false;
-
-		this.initiallyPaused = false;
-		this.sceneEntities = [];
-		this.sceneEntities.push(new TextScreen(this.game, smc.CREDITS_1));
-		this.sceneEntities.push(new Overlay(this.game, true, smc.LEVEL_TRANSITION_OVERLAY_TIME));
-		this.startedFinalOverlay = false;
-	}
-
-	creditsUpdate() {
-		this.creditsTimer += this.game.clockTick;
-		for (let i = this.sceneEntities.length - 1; i >= 0; i--) {
-			this.sceneEntities[i].update();
-			if (this.sceneEntities[i].removeFromWorld) {
-				this.sceneEntities.splice(i, 1);
-			}
-		}
-
-    if (!this.startedOverlay && this.creditsTimer > smc.CREDITS_MESSAGE_1_TIME - smc.LEVEL_TRANSITION_OVERLAY_TIME) {
-      this.startedOverlay = true;
-      this.sceneEntities.push(new Overlay(this.game, false, smc.LEVEL_TRANSITION_OVERLAY_TIME));
-    } else if (!this.startedSecondCreditMessage && this.creditsTimer >= smc.CREDITS_MESSAGE_1_TIME) {
-      this.startedSecondCreditMessage = true;
-      this.sceneEntities.push(new TextScreen(this.game, smc.CREDITS_2));
-      this.sceneEntities.push(new Overlay(this.game, true, smc.LEVEL_TRANSITION_OVERLAY_TIME));
-    }
-	}
-
-	creditsDraw() {
-		for (let i = 0; i < this.sceneEntities.length; i++) {
-			this.sceneEntities[i].draw();
-		}
-	}
-
-
-  //________________________________________________________
-  startMultiplayerTrainingScene() {
-    this.startTrainingGroundScene();  // set up P1, level, droids, etc.
-    this.multiplayerActive = true;
-
-    // Create P2
-    this.Zerlin2 = new Zerlin2(this.game, this.camera, this);
-    this.Zerlin2.maxHealth = 15;
-    this.Zerlin2.maxForce  = 15;
-    this.Zerlin2.setHealth();
-
-    // P2 status bars — mirrored to top-right of screen
-    var barLength = this.game.surfaceWidth * Constants.StatusBarConstants.STATUS_BAR_LENGTH;
-    var p2BarX = this.game.surfaceWidth - barLength - 25;
-    this.addEntity(new HealthStatusBarP2(this.game, this, p2BarX, 25));
-    this.addEntity(new ForceStatusBarP2(this.game, this, p2BarX, 50));
-
-    // Revive / restart state
-    this._mpRestartPending = false;
-    this._mpRestartReadyToExecute = false;
-    this._mpRestartTimer = null;
-    this._prevP1Space = false;
-    this._prevP2Space = false;
-
-    // Networking
-    this.pendingSnapshot = null;
-    this.lastP1State = null;
-    this.networkSnapshotTimer = 0;
-    if (!this.game.network.isHost) {
-      // Client: stash incoming snapshots for application at start of next update;
-      // also track lastP1State for per-frame animation override
-      this.game.network.onStateReceived = (snap) => {
-        this.pendingSnapshot = snap;
-        this.lastP1State = snap.p1;
-        // Mark Z1's lightsaber as ghost so its update() skips input handling
-        if (this.Zerlin && this.Zerlin.lightsaber && !this.Zerlin.lightsaber.ghost) {
-          this.Zerlin.lightsaber.ghost = true;
-        }
-      };
-    }
-  }
-
-  startTrainingGroundScene() {
-    this.multiplayerActive = false;
-    this.Zerlin2 = null;
-    this.game.audio.campFire.stop();
-    this.game.audio.endAllSoundFX();
-    this.levelSceneTimer = 0;
-    this.update = this.trainingGroundUpdate;
-    this.draw = this.trainingGroundDraw;
-    this.camera.x = 0;
-    this.camera.y = 0;
-
-    this.level = this.trainingLevel;
-    this.checkPoint = new CheckPoint(this.game, this.camera.width * cc.ZERLIN_POSITION_ON_SCREEN, 0);
-    this._nextEntityId = 1;
-    this.powerupRespawnQueue = [];
-    this.droids = [];
-    this.lasers = [];
-    this.powerups = [];
-    this.otherEntities = [];
-    this.activePowerups = [];
-    this.boss = null;
-    this.bossMusicSwitched = false;
-    this.bossHealthBar = null;
-    this.level.set();
-    // Preserve the user's checkbox selections across respawns; only initialize on first entry
-    if (!this.enabledDroidTypes) {
-      this.enabledDroidTypes = new Set();
-      if (smc.TRAINING_DEFAULT_BASIC)      this.enabledDroidTypes.add('BasicDroid');
-      if (smc.TRAINING_DEFAULT_SCATTER)    this.enabledDroidTypes.add('ScatterShotDroid');
-      if (smc.TRAINING_DEFAULT_SLOW_BURST) this.enabledDroidTypes.add('SlowBurstDroid');
-      if (smc.TRAINING_DEFAULT_FAST_BURST) this.enabledDroidTypes.add('FastBurstDroid');
-      if (smc.TRAINING_DEFAULT_SNIPER)     this.enabledDroidTypes.add('SniperDroid');
-      if (smc.TRAINING_DEFAULT_MULTISHOT)  this.enabledDroidTypes.add('MultishotDroid');
-    }
-
-    // Drain all droids from level into our controlled pool; powerups spawn normally
-    this.trainingDroidPool = this.level.unspawnedDroids.filter(d => this.enabledDroidTypes.has(d.constructor.name));
-    this.level.unspawnedDroids = [];
-
-    this.addEntity(new HealthStatusBar(this.game, this, 25, 25));
-    this.addEntity(new ForceStatusBar(this.game, this, 50, 50));
-    this.Zerlin.maxHealth = 15;
-    this.Zerlin.maxForce = 15;
-    this.Zerlin.reset();
-    this.Zerlin.setHealth(); // apply god mode if active
-
-    this.trainingKills = 0;
-    this.trainingSpawnTimer = 0;
-    this.cameraShakeTimer = 0;
-    this.cameraShakeIntensity = 0;
-    this.trainingPrevHealth = this.Zerlin.currentHealth;
-    if (this.trainingTargetDroids === undefined) this.trainingTargetDroids = smc.TRAINING_DEFAULT_DROIDS;
-
-    // Store original laser speeds once
-    if (!this.trainingOrigLaserSpeeds) {
-      this.trainingOrigLaserSpeeds = {
-        basic:     Constants.DroidBasicConstants.BASIC_DROID_LASER_SPEED,
-        leggy:     Constants.DroidBasicConstants.LEGGY_DROID_LASER_SPEED,
-        slowburst: Constants.DroidBasicConstants.SLOWBURST_DROID_LASER_SPEED,
-        fastburst: Constants.DroidBasicConstants.FASTBURST_DROID_LASER_SPEED,
-        sniper:    Constants.DroidBasicConstants.SNIPER_DROID_LASER_SPEED
-      };
-    }
-    // Apply current slider multiplier
-    if (this.trainingLaserMult === undefined) this.trainingLaserMult = smc.TRAINING_DEFAULT_LASER_MULT;
-    this.setTrainingLaserSpeed(this.trainingLaserMult);
-
-    this.initiallyPaused = false;
-    this.canPause = false;
-    this.sceneEntities = [];
-    if (this.trainingBgIndex === 2) { // Hoth — add falling snow
-      this.sceneEntities.push(new ParallaxSnowBackground(this.game, this, 300));
-      this.sceneEntities.push(new ParallaxSnowBackground(this.game, this, 200));
-      this.sceneEntities.push(new ParallaxSnowBackground(this.game, this, 100));
-    }
-    this.startedFinalOverlay = false;
-    this.startNewScene = false;
-
-    document.getElementById("trainingControls").style.display = "block";
-
-    this.game.audio.playSoundFx(this.game.audio.lightsaber, 'lightsaberOn');
-    this.game.audio.playSoundFx(this.game.audio.saberHum);
-  }
-
-  trainingGroundUpdate() {
-    this.levelSceneTimer += this.game.clockTick;
-    this.musicMenu.update();
-
-    if (!this.paused) {
-      // Client: run Zerlin (P1's character) with completely neutral input so
-      // local physics work (gravity, platform landing, lastBottom tracking)
-      // but P2's keys/mouse/clicks don't affect P1's character.
-      // Snapshot correction is applied AFTER physics so Zerlin doesn't
-      // start stuck at y=0 off the top of the screen.
-      if (this.multiplayerActive && this.Zerlin2 && !this.game.network.isHost) {
-        var _sk = this.game.keys; var _sm = this.game.mouse;
-        var _sc = this.game.click; var _src = this.game.rightClickDown;
-        // Fake keys: pass P1's direction so update() doesn't zero deltaX.
-        // No jump/roll/slash keys — those states come from the per-frame override.
-        var fakeKeys = {};
-        if (this.lastP1State) {
-          var d = this.lastP1State.direction;
-          if (d === 1)  fakeKeys['KeyD'] = true;
-          if (d === -1) fakeKeys['KeyA'] = true;
-        }
-        this.game.keys = fakeKeys;
-        // Fake mouse exactly at Zerlin.x in screen space → neither facing-flip
-        // branch (lines 119/121) fires, so it can't override the correct facing
-        // direction we set in the per-frame override below.
-        this.game.mouse = { x: this.Zerlin.x - this.camera.x, y: this.Zerlin.y };
-        this.game.click = null;
-        this.game.rightClickDown = false;
-        this.Zerlin.update();
-        this.game.keys = _sk; this.game.mouse = _sm;
-        this.game.click = _sc; this.game.rightClickDown = _src;
-        // Re-apply last-known P1 state every frame so draw() shows the right
-        // sprite and the saber arm matches P1's orientation.
-        if (this.lastP1State) {
-          var s = this.lastP1State;
-          // Correct facing direction (also recomputes bounding box)
-          if (s.facingRight) this.Zerlin.faceRight(); else this.Zerlin.faceLeft();
-          // Restore animation-driving flags
-          this.Zerlin.direction              = s.direction;
-          this.Zerlin.falling                = s.falling;
-          this.Zerlin.somersaulting          = s.somersaulting          || false;
-          this.Zerlin.somersaultingDirection = s.somersaultingDirection  || 0;
-          this.Zerlin.slashing               = s.slashing               || false;
-          this.Zerlin.slashingDirection      = s.slashingDirection       || 0;
-          if (s.slashElapsedTime     !== undefined && this.Zerlin.slashingAnimation)
-            this.Zerlin.slashingAnimation.elapsedTime     = s.slashElapsedTime;
-          if (s.slashLeftElapsedTime !== undefined && this.Zerlin.slashingLeftAnimation)
-            this.Zerlin.slashingLeftAnimation.elapsedTime = s.slashLeftElapsedTime;
-          if (s.somersaultElapsedTime !== undefined && this.Zerlin.somersaultingAnimation)
-            this.Zerlin.somersaultingAnimation.elapsedTime = s.somersaultElapsedTime;
-          this.Zerlin.forceJumping           = s.forceJumping            || false;
-          this.Zerlin.crouching              = s.crouching               || false;
-          if (this.Zerlin.lightsaber) {
-            var ls = this.Zerlin.lightsaber;
-            // Arm sprite: one call covers all poses, including throw arm for shock/throw
-            ls.setArmSpriteByKey(s.armSpriteKey);
-            ls.angle       = s.saberAngle;
-            ls.bounceOffset = s.saberBounceOffset || 0;
-            ls.hidden      = s.saberHidden || false;
-            ls.updateCollisionLine();
-            // Saber throw: create/destroy ghost AirbornSaber and sync its position
-            if (s.saberThrowing) {
-              if (!ls.airbornSaber) {
-                ls.throwing = true;
-                ls.airbornSaber = new AirbornSaber(this.game, ls, 0, 0);
-              }
-              ls.airbornSaber.x = s.airbornX;
-              ls.airbornSaber.y = s.airbornY;
-            } else {
-              if (ls.airbornSaber) ls.catch();
-            }
-            // Lightning orb: driven by whether the orb actually exists on host
-            if (s.orbActive) {
-              if (!ls.orb) ls.orb = new LightningOrb(ls);
-              ls.orb.powerTimer = s.orbPowerTimer;
-              // Recompute orb position now that angle is correct
-              ls.orb.x = ls.x + Math.cos(ls.angle) * ls.throwArmLength;
-              ls.orb.y = ls.y + Math.sin(ls.angle) * ls.throwArmLength;
-            } else {
-              ls.orb = null;
-            }
-            // Lightning bolts: spawn any not yet created on this screen
-            if (!ls._p2LightningCreated) ls._p2LightningCreated = 0;
-            var toCreate = (s.totalLightningFired || 0) - ls._p2LightningCreated;
-            if (toCreate < 0) { ls._p2LightningCreated = s.totalLightningFired; toCreate = 0; }
-            if (toCreate > 0 && s.lightningStartX) {
-              var fakeTarget = {
-                x: s.lightningStartX + Math.cos(s.lightningAngle) * 1000 - this.camera.x,
-                y: s.lightningStartY + Math.sin(s.lightningAngle) * 1000
-              };
-              for (var li = 0; li < toCreate; li++) {
-                ls.lightning.push(new LightningBolt(this.game, s.lightningStartX, s.lightningStartY, fakeTarget, 1));
-              }
-              ls._p2LightningCreated = s.totalLightningFired;
-            }
-          }
-        }
-      } else {
-        this.Zerlin.update();
-      }
-
-      // Client: apply snapshot corrections AFTER physics so positions are
-      // authoritative but Zerlin has valid gravity/platform state each frame.
-      if (this.multiplayerActive && this.Zerlin2 && !this.game.network.isHost && this.pendingSnapshot) {
-        if (this.pendingSnapshot.restartMultiplayer) {
-          this.game.audio.endAllSoundFX();
-          this.startMultiplayerTrainingScene();
-          return;
-        }
-        this._applyPlayerFromSnapshot(this.Zerlin,  this.pendingSnapshot.p1);
-        this._applyPlayerFromSnapshot(this.Zerlin2, this.pendingSnapshot.p2);
-        this._applyEntitySnapshot(this.pendingSnapshot);
-        if (this.pendingSnapshot.kills !== undefined) this.trainingKills = this.pendingSnapshot.kills;
-        this.pendingSnapshot = null;
-      }
-
-      if (this.multiplayerActive && this.Zerlin2) this.Zerlin2.update();
-      this.camera.update();
-      // Call level.update() for tile physics and powerup spawning; droids managed by pool
-      this.level.update();
-
-      // Staggered droid spawning — host-authoritative; client receives droids via snapshot
-      if (!this.multiplayerActive || this.game.network.isHost) {
-        if (this.trainingDroidPool.length === 0 && this.enabledDroidTypes.size > 0) {
-          this.level.set();
-          this.trainingDroidPool = this.level.unspawnedDroids.filter(d => this.enabledDroidTypes.has(d.constructor.name));
-          this.level.unspawnedDroids = [];
-          // Powerups are managed separately (respawn-on-grab); don't re-spawn them
-          // when the droid pool refills or tokens will build up in the same spot.
-          this.level.unspawnedPowerups = [];
-        }
-        this.trainingSpawnTimer -= this.game.clockTick;
-        if (this.trainingSpawnTimer <= 0
-            && this.droids.length < this.trainingTargetDroids
-            && this.trainingDroidPool.length > 0) {
-          this.trainingSpawnTimer = 0.5;
-          var spawnedDroid = this.trainingDroidPool.pop();
-          spawnedDroid.id = this._nextEntityId++;
-          this.droids.push(spawnedDroid);
-        }
-      }
-
-      for (var i = this.droids.length - 1; i >= 0; i--) {
-        this.droids[i].update();
-        if (this.droids[i].removeFromWorld) {
-          this.trainingKills++;
-          this.droids.splice(i, 1);
-        }
-      }
-      for (var i = this.lasers.length - 1; i >= 0; i--) {
-        this.lasers[i].update();
-        if (this.lasers[i].removeFromWorld) {
-          this.lasers.splice(i, 1);
-        }
-      }
-      for (var i = this.powerups.length - 1; i >= 0; i--) {
-        this.powerups[i].update();
-        if (this.powerups[i].removeFromWorld) {
-          var pu = this.powerups[i];
-          // Tokens that were never grabbed disappear quietly; grabbed tokens
-          // respawn at their home position after a fixed delay.
-          if (pu.wasPickedUp) {
-            this.powerupRespawnQueue.push({
-              type: pu.constructor.name,
-              x: pu.x,
-              y: pu.startY,
-              respawnAt: this.levelSceneTimer + smc.POWERUP_RESPAWN_DELAY,
-            });
-          }
-          this.powerups.splice(i, 1);
-        }
-      }
-
-      // Re-materialize picked-up powerups after the configured delay
-      for (var i = this.powerupRespawnQueue.length - 1; i >= 0; i--) {
-        if (this.levelSceneTimer >= this.powerupRespawnQueue[i].respawnAt) {
-          var entry = this.powerupRespawnQueue[i];
-          var respawned = this._createTrainingPowerup(entry.type, entry.x, entry.y);
-          if (respawned) this.powerups.push(respawned);
-          this.powerupRespawnQueue.splice(i, 1);
-        }
-      }
-
-      for (var i = this.activePowerups.length - 1; i >= 0; i--) {
-        this.activePowerups[i].update(i);
-        if (this.activePowerups[i].removeFromWorld) {
-          this.activePowerups.splice(i, 1);
-        }
-      }
-      for (var i = this.otherEntities.length - 1; i >= 0; i--) {
-        this.otherEntities[i].update();
-        if (this.otherEntities[i].removeFromWorld) {
-          this.otherEntities.splice(i, 1);
-        }
-      }
-
-      this.collisionManager.handleCollisions();
-
-      // Camera shake on hit
-      var zc = Constants.ZerlinConstants;
-      if (this.Zerlin.currentHealth < this.trainingPrevHealth) {
-        this.cameraShakeTimer = zc.HIT_SHAKE_DURATION;
-        this.cameraShakeIntensity = zc.HIT_SHAKE_INTENSITY;
-      }
-      this.trainingPrevHealth = this.Zerlin.currentHealth;
-      if (this.cameraShakeTimer > 0) {
-        this.cameraShakeTimer -= this.game.clockTick;
-        if (this.cameraShakeTimer < 0) this.cameraShakeTimer = 0;
-      }
-
-      for (let i = this.sceneEntities.length - 1; i >= 0; i--) {
-        this.sceneEntities[i].update();
-        if (this.sceneEntities[i].removeFromWorld) {
-          this.sceneEntities.splice(i, 1);
-        }
-      }
-
-      // ── Networking ──────────────────────────────────────────────────
-      if (this.multiplayerActive && this.Zerlin2) {
-        if (this.game.network.isHost) {
-          // Host: send authoritative player state to client at 20 Hz
-          this.networkSnapshotTimer -= this.game.clockTick;
-          if (this.networkSnapshotTimer <= 0) {
-            this.networkSnapshotTimer = 1 / 20;
-            this.game.network.sendGameState(this._buildPlayerSnapshot());
-            if (this._mpRestartReadyToExecute) {
-              this.game.audio.endAllSoundFX();
-              this.startMultiplayerTrainingScene();
-              return;
-            }
-          }
-        } else {
-          // Client: send local input to host every frame
-          this.game.network.sendInput({
-            keys:           this.game.keys,
-            mouseX:         this.game.mouse ? this.game.mouse.x : 0,
-            mouseY:         this.game.mouse ? this.game.mouse.y : 0,
-            click:          !!this.game.click,
-            rightClickDown: this.game.rightClickDown || false,
-          });
-        }
-      }
-    }
-
-    if (!this.initiallyPaused && this.levelSceneTimer > smc.PAUSE_TIME_AFTER_START_LEVEL) {
-      this.initiallyPaused = true;
-      this.canPause = true;
-    }
-
-    if (this.multiplayerActive && this.Zerlin2) {
-      this._updateMultiplayerDeath();
-    } else {
-      // Single-player: wait for death animation then restart
-      if (!this.startedFinalOverlay && !this.Zerlin.alive) {
-        this.canPause = false;
-        if (this.levelSceneTimer > this.Zerlin.timeOfDeath + this.Zerlin.deathAnimation.totalTime) {
-          this.startedFinalOverlay = true;
-          this.stopLevelTime = this.levelSceneTimer + 1.5;
-          this.startNewScene = true;
-        }
-      }
-      if ((this.levelSceneTimer > this.stopLevelTime && this.startNewScene)
-       || (!this.Zerlin.alive && this.game.keys['Enter'])) {
-        this.game.audio.endAllSoundFX();
-        this.startTrainingGroundScene();
-        this.startNewScene = false;
-      }
-    }
-  }
-
-  trainingGroundDraw() {
-    // Apply camera shake offset if active
-    var shakeX = 0, shakeY = 0;
-    if (this.cameraShakeTimer > 0) {
-      var zc = Constants.ZerlinConstants;
-      var ratio = this.cameraShakeTimer / zc.HIT_SHAKE_DURATION;
-      var magnitude = this.cameraShakeIntensity * ratio;
-      shakeX = (Math.random() * 2 - 1) * magnitude;
-      shakeY = (Math.random() * 2 - 1) * magnitude;
-      this.game.ctx.save();
-      this.game.ctx.translate(shakeX, shakeY);
-    }
-
-    this.camera.draw();
-    this.level.draw();
-    this.Zerlin.draw();
-    if (this.multiplayerActive && this.Zerlin2) this.Zerlin2.draw();
-    for (var i = 0; i < this.droids.length; i++) {
-      this.droids[i].draw(this.ctx);
-    }
-    for (var i = 0; i < this.lasers.length; i++) {
-      this.lasers[i].draw(this.ctx);
-    }
-    for (var i = 0; i < this.powerups.length; i++) {
-      this.powerups[i].draw(this.ctx);
-    }
-    for (var i = 0; i < this.activePowerups.length; i++) {
-      this.activePowerups[i].draw();
-    }
-    for (var i = 0; i < this.otherEntities.length; i++) {
-      this.otherEntities[i].draw(this.ctx);
-    }
-    for (let i = 0; i < this.sceneEntities.length; i++) {
-      this.sceneEntities[i].draw();
-    }
-    if (this.multiplayerActive && this.Zerlin2) {
-      this._drawReviveIndicator(this.Zerlin);
-      this._drawReviveIndicator(this.Zerlin2);
-    }
-    if (this.paused) {
-      this.pauseScreen.draw();
-    }
-    this.musicMenu.draw();
-
-    // Restore from camera shake (HUD drawn at fixed position)
-    if (this.cameraShakeTimer > 0) {
-      this.game.ctx.restore();
-    }
-
-    // Training HUD
-    this.game.ctx.textAlign = "left";
-    this.game.ctx.font = '22px ' + smc.GAME_FONT;
-    this.game.ctx.fillStyle = "rgba(255, 220, 0, 0.9)";
-    this.game.ctx.fillText(
-      "TRAINING GROUND  |  Kills: " + this.trainingKills +
-      "  |  Active: " + this.droids.length,
-      25, 680);
-  }
-
-  // ── Multiplayer snapshot helpers ─────────────────────────────────────────
-
-  /** Returns the alive player nearest to fromX (used by droid targeting). */
+  /** Returns the alive player nearest to fromX. Used by droid targeting. */
   nearestPlayer(fromX) {
     var z1 = this.Zerlin;
-    if (!this.multiplayerActive || !this.Zerlin2 || !this.Zerlin2.alive) return z1;
-    if (!z1.alive) return this.Zerlin2;
-    return Math.abs(fromX - z1.x) <= Math.abs(fromX - this.Zerlin2.x) ? z1 : this.Zerlin2;
+    var scene = this.currentScene;
+    if (scene && scene.multiplayerActive && scene.Zerlin2) {
+      var z2 = scene.Zerlin2;
+      if (!z2.alive) return z1;
+      if (!z1.alive) return z2;
+      return Math.abs(fromX - z1.x) <= Math.abs(fromX - z2.x) ? z1 : z2;
+    }
+    return z1;
   }
 
-  _updateMultiplayerDeath() {
-    var Z1 = this.Zerlin, Z2 = this.Zerlin2;
-    var isHost = this.game.network && this.game.network.isHost;
-
-    // Both dead: wait for both animations, then signal a restart
-    if (!Z1.alive && !Z2.alive) {
-      var bothAnimDone = this.levelSceneTimer > Z1.timeOfDeath + Z1.deathAnimation.totalTime
-                      && this.levelSceneTimer > Z2.timeOfDeath + Z2.deathAnimation.totalTime;
-      if (isHost && bothAnimDone) {
-        if (this._mpRestartTimer === null) {
-          this._mpRestartTimer = this.levelSceneTimer + smc.MP_RESTART_DELAY;
-        }
-        if (this.levelSceneTimer >= this._mpRestartTimer) {
-          this._mpRestartPending = true;
-        }
-      }
-      return; // no revive possible when both are dead
-    }
-    this._mpRestartTimer = null;
-
-    // Host-only revive logic
-    if (!isHost) return;
-
-    var inp = this.game.network.lastReceivedInput || {};
-    var p1SpaceDown = this.game.keys['Space']               && !this._prevP1Space;
-    var p2SpaceDown = inp.keys && inp.keys['Space']         && !this._prevP2Space;
-    this._prevP1Space = !!this.game.keys['Space'];
-    this._prevP2Space = !!(inp.keys && inp.keys['Space']);
-
-    // Z1 dead: Z2 revives with Space
-    if (!Z1.alive && Z2.alive) {
-      if (Math.abs(Z2.x - Z1.x) < smc.MP_REVIVE_DISTANCE && p2SpaceDown) {
-        Z1.reviveProgress = (Z1.reviveProgress || 0) + 1;
-        if (Z1.reviveProgress >= smc.MP_REVIVE_PRESSES_NEEDED) {
-          Z1.revive(smc.MP_REVIVE_HEALTH);
-        }
-      }
-    }
-
-    // Z2 dead: Z1 revives with Space
-    if (!Z2.alive && Z1.alive) {
-      if (Math.abs(Z1.x - Z2.x) < smc.MP_REVIVE_DISTANCE && p1SpaceDown) {
-        Z2.reviveProgress = (Z2.reviveProgress || 0) + 1;
-        if (Z2.reviveProgress >= smc.MP_REVIVE_PRESSES_NEEDED) {
-          Z2.revive(smc.MP_REVIVE_HEALTH);
-        }
-      }
-    }
-  }
-
-  _drawReviveIndicator(zerlin) {
-    if (zerlin.alive) return;
-    if (this.levelSceneTimer < zerlin.timeOfDeath + zerlin.deathAnimation.totalTime) return;
-
-    var ctx = this.game.ctx;
-    var screenX = zerlin.x - this.camera.x;
-    var screenY = zerlin.y - 80;
-    var pulse   = 0.6 + 0.4 * Math.sin(this.levelSceneTimer * 5);
-    var progress = zerlin.reviveProgress || 0;
-
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.font = '18px ' + smc.GAME_FONT;
-
-    // Pulsing "SPACE to revive" label
-    ctx.globalAlpha = pulse;
-    ctx.fillStyle = '#fff';
-    ctx.fillText('SPACE to revive', screenX, screenY);
-
-    // Progress bar (only shown once at least one press has happened)
-    if (progress > 0) {
-      var barW = 90, barH = 10;
-      var filled = (progress / smc.MP_REVIVE_PRESSES_NEEDED) * barW;
-      ctx.globalAlpha = 0.85;
-      ctx.fillStyle = '#333';
-      ctx.fillRect(screenX - barW / 2, screenY + 6, barW, barH);
-      ctx.fillStyle = '#4af';
-      ctx.fillRect(screenX - barW / 2, screenY + 6, filled, barH);
-    }
-
-    ctx.restore();
-  }
-
-  _buildPlayerSnapshot() {
-    var snap = {
-      p1:       this._serializePlayer(this.Zerlin),
-      p2:       this._serializePlayer(this.Zerlin2),
-      kills:    this.trainingKills,
-      droids:   this.droids.map(d => this._serializeDroid(d)),
-      lasers:   this.lasers.map(l => this._serializeLaser(l)),
-      powerups: this.powerups.map(p => ({ type: p.constructor.name, x: p.x, startY: p.startY })),
-    };
-    if (this._mpRestartPending) {
-      snap.restartMultiplayer = true;
-      this._mpRestartReadyToExecute = true; // restart on next frame after this snapshot is sent
-    }
-    return snap;
-  }
-
-  _serializeDroid(d) {
-    return {
-      id:   d.id,
-      type: d.constructor.name,
-      x: d.x, y: d.y,
-      deltaX: d.deltaX, deltaY: d.deltaY,
-      bcx: d.boundCircle.x, bcy: d.boundCircle.y,
-    };
-  }
-
-  _serializeLaser(l) {
-    return {
-      id:   l.id,
-      x: l.x, y: l.y,
-      tailX: l.tailX, tailY: l.tailY,
-      deltaX: l.deltaX, deltaY: l.deltaY,
-      isDeflected: l.isDeflected,
-      poisoned:    l.poisoned,
-      color: l.color, deflectedColor: l.deflectedColor,
-      width: l.width, length: l.length,
-    };
-  }
-
-  /**
-   * Client-side: reconcile local ghost droids and lasers against the authoritative
-   * host snapshot.  New entities are created, existing ones get position corrections,
-   * and entities absent from the snapshot are removed (with a visual explosion for
-   * droids so their death registers on the client screen).
-   */
-  _applyEntitySnapshot(snap) {
-    // ── DROIDS ──────────────────────────────────────────────────────────────
-    var snapDroids = snap.droids || [];
-    var snapDroidMap = new Map(snapDroids.map(d => [d.id, d]));
-
-    // Remove locals not in snapshot → droid died on host
-    for (var i = this.droids.length - 1; i >= 0; i--) {
-      var ld = this.droids[i];
-      if (!snapDroidMap.has(ld.id)) {
-        var cx = ld.x + (ld.animation ? ld.animation.scale * ld.animation.frameWidth  / 2 : 0);
-        var cy = ld.y + (ld.animation ? ld.animation.scale * ld.animation.frameHeight / 2 : 0);
-        this.otherEntities.push(new DroidExplosion(this.game, cx, cy));
-        this.droids.splice(i, 1);
-      }
-    }
-
-    var localDroidMap = new Map(this.droids.map(d => [d.id, d]));
-
-    for (var sd of snapDroids) {
-      var existingDroid = localDroidMap.get(sd.id);
-      if (existingDroid) {
-        // Position correction
-        existingDroid.x = sd.x; existingDroid.y = sd.y;
-        existingDroid.deltaX = sd.deltaX; existingDroid.deltaY = sd.deltaY;
-        existingDroid.boundCircle.x = sd.bcx; existingDroid.boundCircle.y = sd.bcy;
-      } else {
-        var ghostDroid = this._getGhostDroidFromPool(sd.type);
-        if (ghostDroid) {
-          ghostDroid.id = sd.id;
-          ghostDroid.ghost = true;
-          ghostDroid.sceneManager = this;
-          ghostDroid.x = sd.x; ghostDroid.y = sd.y;
-          ghostDroid.deltaX = sd.deltaX; ghostDroid.deltaY = sd.deltaY;
-          ghostDroid.boundCircle.x = sd.bcx; ghostDroid.boundCircle.y = sd.bcy;
-          this.droids.push(ghostDroid);
-        }
-      }
-    }
-
-    // ── LASERS ──────────────────────────────────────────────────────────────
-    var snapLasers = snap.lasers || [];
-    var snapLaserMap = new Map(snapLasers.map(l => [l.id, l]));
-
-    // Remove locals not in snapshot → laser left screen or was consumed
-    for (var i = this.lasers.length - 1; i >= 0; i--) {
-      if (!snapLaserMap.has(this.lasers[i].id)) {
-        this.lasers.splice(i, 1);
-      }
-    }
-
-    var localLaserMap = new Map(this.lasers.map(l => [l.id, l]));
-
-    for (var sl of snapLasers) {
-      var existingLaser = localLaserMap.get(sl.id);
-      if (existingLaser) {
-        // Position correction + state sync
-        existingLaser.x = sl.x; existingLaser.y = sl.y;
-        existingLaser.tailX = sl.tailX; existingLaser.tailY = sl.tailY;
-        existingLaser.deltaX = sl.deltaX; existingLaser.deltaY = sl.deltaY;
-        existingLaser.isDeflected = sl.isDeflected;
-        existingLaser.poisoned = sl.poisoned;
-      } else {
-        // Create ghost laser; use DroidLaser for all types — homing behavior is host-only
-        var ghostLaser = DroidLaser.angleConstructor(
-          this.game,
-          sl.x, sl.y, 1,
-          Math.atan2(sl.deltaY, sl.deltaX),
-          sl.length, sl.width, sl.color, sl.deflectedColor
-        );
-        ghostLaser.id = sl.id;
-        ghostLaser.ghost = true;
-        ghostLaser.x = sl.x; ghostLaser.y = sl.y;
-        ghostLaser.tailX = sl.tailX; ghostLaser.tailY = sl.tailY;
-        ghostLaser.deltaX = sl.deltaX; ghostLaser.deltaY = sl.deltaY;
-        ghostLaser.isDeflected = sl.isDeflected;
-        ghostLaser.poisoned = sl.poisoned;
-        this.lasers.push(ghostLaser);
-      }
-    }
-
-    // ── POWERUPS ──────────────────────────────────────────────────────────────
-    var snapPowerups = snap.powerups;
-    if (snapPowerups) {
-      // Remove local powerups that no longer exist on the host (grabbed by a player)
-      for (var i = this.powerups.length - 1; i >= 0; i--) {
-        var lp = this.powerups[i];
-        var inSnap = snapPowerups.some(sp => sp.type === lp.constructor.name && Math.abs(sp.x - lp.x) < 5);
-        if (!inSnap) {
-          this.powerups.splice(i, 1);
-        }
-      }
-      // Add powerups that respawned on the host but don't exist locally yet
-      for (var sp of snapPowerups) {
-        var existsLocally = this.powerups.some(lp => lp.constructor.name === sp.type && Math.abs(lp.x - sp.x) < 5);
-        if (!existsLocally) {
-          var newPu = this._createTrainingPowerup(sp.type, sp.x, sp.startY);
-          if (newPu) this.powerups.push(newPu);
-        }
-      }
-    }
-  }
-
-  /**
-   * Retrieve a pre-built droid of the requested type from the client's pool
-   * (used exclusively for creating ghost copies on the client machine).
-   * Replenishes the pool automatically if depleted.
-   */
-  _getGhostDroidFromPool(type) {
-    // Replenish if we've run dry
-    if (this.trainingDroidPool.findIndex(d => d.constructor.name === type) === -1) {
-      this.level.set();
-      var fresh = this.level.unspawnedDroids;
-      this.level.unspawnedDroids = [];
-      this.trainingDroidPool = this.trainingDroidPool.concat(fresh);
-    }
-    var idx = this.trainingDroidPool.findIndex(d => d.constructor.name === type);
-    if (idx === -1) return null;
-    return this.trainingDroidPool.splice(idx, 1)[0];
-  }
-
-  _serializePlayer(z) {
-    return {
-      x: z.x, y: z.y,
-      deltaX: z.deltaX, deltaY: z.deltaY,
-      health: z.currentHealth,
-      force:  z.currentForce,
-      facingRight: z.facingRight,
-      alive:     z.alive,
-      direction: z.direction,
-      falling:   z.falling,
-      somersaulting:          z.somersaulting,
-      somersaultingDirection: z.somersaultingDirection,
-      slashing:               z.slashing,
-      slashingDirection:      z.slashingDirection,
-      slashElapsedTime:       z.slashingAnimation     ? z.slashingAnimation.elapsedTime     : 0,
-      slashLeftElapsedTime:   z.slashingLeftAnimation ? z.slashingLeftAnimation.elapsedTime : 0,
-      somersaultElapsedTime:  z.somersaultingAnimation ? z.somersaultingAnimation.elapsedTime : 0,
-      forceJumping:           z.forceJumping,
-      crouching:              z.crouching,
-      armSpriteKey:     z.lightsaber ? z.lightsaber.armSpriteKey : 'rightUp',
-      saberAngle:       z.lightsaber ? z.lightsaber.angle       : 0,
-      saberHidden:      z.lightsaber ? z.lightsaber.hidden      : false,
-      saberThrowing:    z.lightsaber ? z.lightsaber.throwing    : false,
-      saberBounceOffset: z.lightsaber ? z.lightsaber.bounceOffset : 0,
-      airbornX:         (z.lightsaber && z.lightsaber.airbornSaber) ? z.lightsaber.airbornSaber.x : 0,
-      airbornY:         (z.lightsaber && z.lightsaber.airbornSaber) ? z.lightsaber.airbornSaber.y : 0,
-      orbActive:        z.lightsaber ? z.lightsaber.orb !== null : false,
-      orbPowerTimer:    (z.lightsaber && z.lightsaber.orb) ? z.lightsaber.orb.powerTimer : 0,
-      totalLightningFired: z.lightsaber ? (z.lightsaber.totalLightningFired || 0) : 0,
-      lightningStartX:  z.lightsaber ? (z.lightsaber.lastLightningStartX || 0) : 0,
-      lightningStartY:  z.lightsaber ? (z.lightsaber.lastLightningStartY || 0) : 0,
-      lightningAngle:   z.lightsaber ? (z.lightsaber.lastLightningAngle  || 0) : 0,
-      reviveProgress:   z.reviveProgress || 0,
-    };
-  }
-
-  _applyPlayerFromSnapshot(zerlin, state) {
-    if (!state) return;
-    zerlin.x      = state.x;
-    zerlin.y      = state.y;
-    zerlin.deltaX = state.deltaX;
-    zerlin.deltaY = state.deltaY;
-    zerlin.currentHealth = state.health;
-    zerlin.currentForce  = state.force;
-    zerlin.direction = state.direction;
-    zerlin.falling   = state.falling;
-    if (zerlin.lightsaber) {
-      zerlin.lightsaber.angle = state.saberAngle;
-      zerlin.lightsaber.updateCollisionLine();
-    }
-    if (state.reviveProgress !== undefined) zerlin.reviveProgress = state.reviveProgress;
-    if (state.alive && !zerlin.alive) zerlin.revive(state.health);
-    // Sync facing direction (also recomputes bounding box)
-    if (state.facingRight !== zerlin.facingRight) {
-      state.facingRight ? zerlin.faceRight() : zerlin.faceLeft();
-    } else {
-      zerlin.updateBoundingBox();
-    }
-  }
+  // ── Training helpers (called from GameEngine.js UI controls) ─────────────
 
   setTrainingLaserSpeed(mult) {
     this.trainingLaserMult = mult;
@@ -1533,14 +391,20 @@ class SceneManager2 {
     } else {
       this.enabledDroidTypes.delete(typeName);
       // Remove any live droids of this type immediately
-      for (let i = this.droids.length - 1; i >= 0; i--) {
-        if (this.droids[i].constructor.name === typeName) {
-          this.droids.splice(i, 1);
+      if (this.droids) {
+        for (let i = this.droids.length - 1; i >= 0; i--) {
+          if (this.droids[i].constructor.name === typeName) {
+            this.droids.splice(i, 1);
+          }
         }
       }
     }
-    // Re-filter the queued pool to match the new enabled set
-    this.trainingDroidPool = this.trainingDroidPool.filter(d => this.enabledDroidTypes.has(d.constructor.name));
+    // Re-filter the queued pool in the active training scene
+    if (this.currentScene && this.currentScene.trainingDroidPool) {
+      this.currentScene.trainingDroidPool = this.currentScene.trainingDroidPool.filter(
+        d => this.enabledDroidTypes.has(d.constructor.name)
+      );
+    }
   }
 
   setTrainingBackground(index) {
@@ -1549,403 +413,19 @@ class SceneManager2 {
     this.startTrainingGroundScene();
   }
 
-  //________________________________________________________
-  saveProgress() {
-
-  }
-
   toggleInfiniteHealth() {
-    if (this.infiniteHealth) {
-      this.infiniteHealth = false;
-      this.Zerlin.infiniteHealth = false;
-      if (this.Zerlin2) this.Zerlin2.infiniteHealth = false;
-    } else {
-      this.infiniteHealth = true;
-      this.Zerlin.infiniteHealth = true;
-      if (this.Zerlin2) this.Zerlin2.infiniteHealth = true;
+    this.infiniteHealth = !this.infiniteHealth;
+    this.Zerlin.infiniteHealth = this.infiniteHealth;
+    if (this.currentScene && this.currentScene.Zerlin2) {
+      this.currentScene.Zerlin2.infiniteHealth = this.infiniteHealth;
+      this.currentScene.Zerlin2.setHealth();
     }
     this.Zerlin.setHealth();
-    if (this.Zerlin2) this.Zerlin2.setHealth();
   }
 
-  /**
-   * Factory for recreating a powerup token at an arbitrary position.
-   * Used by the respawn queue in trainingGroundUpdate and by powerup snapshot reconciliation.
-   */
-  _createTrainingPowerup(type, x, y) {
-    var am = this.game.assetManager;
-    switch (type) {
-      case 'HealthPowerUp':
-        return new HealthPowerUp(this.game, am.getAsset('img/ui/powerup_health.png'), x, y);
-      case 'ForcePowerUp':
-        return new ForcePowerUp(this.game, am.getAsset('img/ui/powerup_force.png'), x, y);
-      case 'InvincibilityPowerUp':
-        return new InvincibilityPowerUp(this.game, am.getAsset('img/ui/powerup_invincibility.png'), x, y);
-      case 'HomingLaserPowerUp':
-        return new HomingLaserPowerUp(this.game, x, y);
-      case 'SplitLaserPowerUp':
-        return new SplitLaserPowerUp(this.game, x, y);
-      case 'TinyModePowerUp':
-        return new TinyModePowerUp(this.game, x, y);
-    }
-    return null;
-  }
-}
+  // ── Misc ──────────────────────────────────────────────────────────────────
 
+  saveProgress() {
 
-
-
-class PauseScreen {
-  constructor(game) {
-    this.game = game;
-    this.overlay = new Overlay(game, true, 1);
-    this.overlay.opacity = .5;
-  }
-
-  update() {
-
-  }
-
-  draw() {
-    var ctx = this.game.ctx;
-    this.overlay.draw();
-    ctx.save();
-    ctx.fillStyle = "white";
-    ctx.textAlign = "center";
-    ctx.font = "70px " + smc.GAME_FONT;
-    ctx.fillText("Paused", this.game.surfaceWidth / 2, 200);
-
-    //draw each powerup on the right
-    //draw each control on the left
-
-    //draw jump control
-    var image = this.game.assetManager.getAsset('img/hero/jump.png');
-    ctx.drawImage(image, 50, 10, 35, 35 * image.height/image.width);
-    ctx.textAlign = "left";
-    ctx.font = "22px " + smc.GAME_FONT;
-    ctx.fillText("Regular Jump: W", 100, 40);
-    ctx.fillText("Force Jump: Shift + W", 100, 70)
-
-    //draw roll control
-    image = this.game.assetManager.getAsset('img/hero/roll.png');
-    ctx.drawImage(image, 40, 125, 50, 50 * image.height/image.width);
-    ctx.fillText("Left Roll: A + S", 100, 140);
-    ctx.fillText("Right Roll: D + S", 100, 170);
-
-    //draw slash control
-    image = this.game.assetManager.getAsset('img/hero/slash.png');
-    ctx.drawImage(image, 40, 200, 50, 50 * image.height/image.width);
-    ctx.fillText("Slash: Spacebar", 100, 250);
-
-    //draw crouch control
-    image = this.game.assetManager.getAsset('img/hero/crouch.png');
-    ctx.drawImage(image, 40, 300, 40, 40 * image.height/image.width);
-    ctx.fillText("Crouch: X", 100, 340);
-
-    //draw flip lightsaber control
-    image = this.game.assetManager.getAsset('img/hero/flip_saber.png');
-    ctx.drawImage(image, 35, 390, 50, 50 * image.height/image.width);
-    ctx.fillText("Flip Saber: Right Click", 100, 410);
-
-    //draw throw saber control
-    image = this.game.assetManager.getAsset('img/hero/saber_throw.png');
-    ctx.drawImage(image, 35, 470, 50, 50 * image.height/image.width);
-    ctx.fillText("Throw Saber: Left Click", 100, 495);
-
-    //draw lightning control
-    image = this.game.assetManager.getAsset('img/hero/lightning.png');
-    ctx.drawImage(image, 35, 530, 50, 50 * image.height/image.width);
-    ctx.fillText("Force Lightning: Shift + LeftClick", 100, 550);
-    ctx.fillText("(Hold to Charge)", 100, 570);
-
-    /* Middle Column */
-    var middleWidth = this.game.surfaceWidth/2;
-    ctx.textAlign = "center";
-    //draw pause and skip scene control
-    ctx.fillText("Pause/Unpause: Enter", middleWidth, 250);
-    ctx.fillText("Skip Scene: Enter", middleWidth, 300);
-
-    /****** Draw Powerup Description ******/
-    ctx.textAlign = "left";
-
-    //draw the Health powerup
-    var spritesheet = this.game.assetManager.getAsset('img/ui/powerup_health.png');
-    var animation = new Animation(spritesheet, 0, 0, 32, 32, 0.1, 5, true, false, 3);
-    animation.drawFrame(this.game.clockTick, ctx, 700, 10);
-    ctx.fillText("Health: Fully Heals Zerlin", 800, 60);
-
-    //draw the force powerup
-    spritesheet = this.game.assetManager.getAsset('img/ui/powerup_force.png');
-    animation = new Animation(spritesheet, 0, 0, 32, 32, 0.1, 9, true, false, 3);
-    animation.drawFrame(this.game.clockTick, ctx, 700, 110);
-    ctx.fillText("Force: Fully Recover Force Power", 800, 160);
-
-    //draw the invincibility powerup
-    spritesheet = this.game.assetManager.getAsset('img/ui/powerup_invincibility.png');
-    animation = new Animation(spritesheet, 0, 0, 32, 32, 0.1, 9, true, false, 2.5);
-    animation.drawFrame(this.game.clockTick, ctx, 705, 210);
-    ctx.fillText("Invincibility", 800, 255);
-
-    //draw the split shot powerup
-    spritesheet = this.game.assetManager.getAsset('img/ui/powerup_coin.png');
-    animation = new Animation(spritesheet, 0, 0, 126, 126, 0.1, 8, true, false, 0.5)
-    animation.drawFrame(this.game.clockTick, ctx, 715, 310);
-    ctx.fillText("Split-Shot: Increase Deflected Lasers", 800, 345)
-
-    //draw the tiny mode powerup
-    spritesheet = this.game.assetManager.getAsset('img/ui/powerup_coin_T.png');
-    animation = new Animation(spritesheet, 0, 0, 126, 126, 0.1, 8, true, false, 0.5)
-    animation.drawFrame(this.game.clockTick, ctx, 715, 400);
-    ctx.fillText("Tiny Mode", 800, 435);
-
-    //draw the homing shot powerup
-    spritesheet = this.game.assetManager.getAsset('img/ui/powerup_laser.png');
-    animation = new Animation(spritesheet,  0, 0, 165, 159, 0.15, 12, true, false, 0.35);
-    animation.drawFrame(this.game.clockTick, ctx, 715, 500);
-    ctx.fillText("Homing Deflection:", 800, 525);
-    ctx.fillText("Deflected Lasers Seek Nearby Droids", 800, 550);
-
-    //draw the checkpoint
-    spritesheet = this.game.assetManager.getAsset('img/ui/checkpoint.png');
-    animation = new Animation(spritesheet, 0, 0, 64, 188, .1, 8, true, false, 0.5);
-    animation.drawFrame(this.game.clockTick, ctx, 730, 580);
-    ctx.fillText("Checkpoint", 800, 635);
-
-    ctx.restore();
-  }
-}
-
-
-
-class TextScreen {
-  constructor(game, message, color, duration) {
-    this.game = game;
-    this.message = message;
-    this.duration = duration? duration : 10000 /* arbitrarily long */;
-    this.font = '30px';
-    this.linePieces = message.split("\n");
-    this.lines = this.linePieces.length;
-    this.color = color ? color : "white";
-    this.timer = 0;
-  }
-
-  update() {
-    this.timer += this.game.clockTick;
-    if (this.timer > this.duration) {
-      this.removeFromWorld = true;
-    }
-  }
-
-  draw() {
-    this.game.ctx.fillStyle = "black";
-    this.game.ctx.fillRect(0, 0, this.game.surfaceWidth, this.game.surfaceHeight);
-
-    this.game.ctx.fillStyle = this.color;
-    this.game.ctx.textAlign = "center";
-    this.game.ctx.font = this.font + ' ' + smc.GAME_FONT;
-    for (let i = 0; i < this.lines; i++) {
-      this.game.ctx.fillText(this.linePieces[i], this.game.surfaceWidth / 2, (i + 1) * (this.game.surfaceHeight / 2) / (this.lines + 1) + (this.game.surfaceHeight / 4));
-    }
-  }
-}
-
-
-class GameOverTextScreen extends TextScreen {
-  constructor(game) {
-    super(game, "GAME OVER", "red");
-    this.font = '80px';
-    this.opacity = 0;
-    this.deltaOpacity = 1;
-  }
-
-  update() {
-    super.update();
-    this.opacity += this.game.clockTick * this.deltaOpacity;
-  }
-
-  draw() {
-    this.game.ctx.globalAlpha = this.opacity;
-    super.draw();
-    this.game.ctx.globalAlpha = 1;
-  }
-}
-
-
-class Overlay {
-
-	constructor(game, lighten, timeToFinish) {
-		this.game = game;
-		this.opacity = lighten ? 1 : 0;
-		this.deltaOpacity = 1 / timeToFinish;
-		this.lighten = lighten;
-		this.timeToFinish = timeToFinish;
-		this.timer = 0;
-	}
-
-	update() {
-		this.timer += this.game.clockTick;
-		if (this.lighten) {
-			this.opacity -= this.game.clockTick * this.deltaOpacity;
-		} else {
-			this.opacity += this.game.clockTick * this.deltaOpacity;
-		}
-
-		if (this.lighten && this.opacity <= 0) {
-			this.removeFromWorld = true;
-		}
-	}
-
-	draw() {
-		this.game.ctx.fillStyle = 'rgb(0,0,0)';
-		this.game.ctx.globalAlpha = this.opacity;
-		this.game.ctx.fillRect(0, 0, this.game.surfaceWidth, this.game.surfaceHeight);
-		this.game.ctx.globalAlpha = 1;
-	}
-
-}
-
-class AttributeCollectionScreen {
-  constructor(game, SceneManager, tokensOffered) {
-    this.game = game;
-    this.SceneManager = SceneManager;
-    this.tokens = tokensOffered;
-    this.timer = 0;
-
-    this.forceHandImg = this.game.assetManager.getAsset('img/hero/force hand.png');
-    this.healthHeartImg = this.game.assetManager.getAsset('img/ui/health heart.png');
-    this.plusMinusImg = this.game.assetManager.getAsset('img/ui/plus minus.png');
-    this.tokenImg = this.game.assetManager.getAsset('img/ui/token.png');
-  }
-
-  update() {
-    this.timer += this.game.clockTick;
-
-    if (this.game.keys['leftClick']) {
-      var clickPoint = this.game.mouse;
-
-      if (this.plusForce(clickPoint)) {
-        // console.log("+ F");
-        if (this.tokens > 0) {
-          this.game.audio.playSoundFx(this.game.audio.plus);
-          this.SceneManager.Zerlin.maxForce += smc.TOKEN_VALUE;
-          this.tokens--;
-        }
-      } else if (this.minusForce(clickPoint)) {
-        // console.log("- F");
-        if (this.SceneManager.Zerlin.maxForce >= smc.TOKEN_VALUE) {
-          this.game.audio.playSoundFx(this.game.audio.minus);
-          this.SceneManager.Zerlin.maxForce -= smc.TOKEN_VALUE;
-          this.tokens++;
-        }
-      } else if (this.plusHealth(clickPoint)) {
-        // console.log("+ H");
-        if (this.tokens > 0) {
-          this.game.audio.playSoundFx(this.game.audio.plus);
-          this.SceneManager.Zerlin.maxHealth += smc.TOKEN_VALUE;
-          this.tokens--;
-        }
-      } else if (this.minusHealth(clickPoint)) {
-        // console.log("- H");
-        if (this.SceneManager.Zerlin.maxHealth >= smc.TOKEN_VALUE + 1) {
-          this.game.audio.playSoundFx(this.game.audio.minus);
-          this.SceneManager.Zerlin.maxHealth -= smc.TOKEN_VALUE;
-          this.tokens++;
-        }
-      } else if (this.pressContinue(clickPoint)) {
-        // console.log("cont");
-        if (this.enableContinue) {
-          this.game.audio.playSoundFx(this.game.audio.continue);
-          this.continue = true;
-        }
-      }
-      this.game.keys['leftClick'] = false;
-    }
-
-    this.enableContinue = this.tokens === 0;
-  }
-
-  draw() {
-    this.game.ctx.fillStyle = "black";
-    this.game.ctx.fillRect(0, 0, this.game.surfaceWidth, this.game.surfaceHeight);
-
-    var oneThirdWidth = this.game.surfaceWidth / 3;
-    
-    //health
-    this.game.ctx.drawImage(this.healthHeartImg, 0, 0, 64, 64, oneThirdWidth - 50, 450, 100, 100);
-    this.game.ctx.drawImage(this.plusMinusImg, 0, 0, 74, 30, oneThirdWidth - 75, 550, 150, 60);
-
-    var healthHeight = this.SceneManager.Zerlin.maxHealth * 3;
-    this.game.ctx.fillStyle = "#ff0000";
-    this.game.ctx.fillRect(oneThirdWidth - 30, 430, 60, -healthHeight - 10);
-    this.game.ctx.fillStyle = "#ff8888";
-    this.game.ctx.fillRect(oneThirdWidth - 23, 430, 46, -healthHeight - 5);
-    this.game.ctx.fillStyle = "#ffffff";
-    this.game.ctx.fillRect(oneThirdWidth - 16, 430, 32, -healthHeight);
-
-    //force
-    this.game.ctx.drawImage(this.forceHandImg, 0, 0, 64, 64, 2 * oneThirdWidth - 50, 450, 100, 100);
-    this.game.ctx.drawImage(this.plusMinusImg, 0, 0, 74, 30, 2 * oneThirdWidth - 75, 550, 150, 60);
-
-    var forceHeight = this.SceneManager.Zerlin.maxForce * 3;
-    this.game.ctx.fillStyle = "#0000ff";
-    this.game.ctx.fillRect(2 * oneThirdWidth - 30, 430, 60, -forceHeight - 10);
-    this.game.ctx.fillStyle = "#8888ff";
-    this.game.ctx.fillRect(2 * oneThirdWidth - 23, 430, 46, -forceHeight - 5);
-    this.game.ctx.fillStyle = "#ffffff";
-    this.game.ctx.fillRect(2 * oneThirdWidth - 16, 430, 32, -forceHeight);
-
-    // tokens
-    this.game.ctx.fillStyle = "yellow";
-    this.game.ctx.font =  '40px ' + smc.GAME_FONT;
-    this.game.ctx.fillText("Tokens Available (spend them wisely):", 250, 75);
-    this.game.ctx.fillStyle = "yellow";
-    for (let i = 0; i < this.tokens; i++) {
-      this.game.ctx.drawImage(this.tokenImg, 0, 0, 64, 64, (i * 40) + 250, 100 + 7 * Math.sin(2 * (this.timer + i*.7)) , 40, 40);
-    }
-
-    // continue box
-    this.game.ctx.fillStyle = this.continue? "#777777" : "#ffffff";
-    this.game.ctx.fillRect(this.game.surfaceWidth/2 - 50, 625, 100, 50);
-
-    this.game.ctx.fillStyle = this.enableContinue? "#000000" : "#aaaaaa";
-    this.game.ctx.textAlign = "center";
-    this.game.ctx.font =  '25px ' + smc.GAME_FONT;
-    this.game.ctx.fillText("continue", this.game.surfaceWidth/2, 650);
-
-  }
-
-  plusForce(point) {
-    return point.x >= 2 * this.game.surfaceWidth / 3 
-        && point.x <= 2 * this.game.surfaceWidth / 3 + 75
-        && point.y >= 550
-        && point.y <= 610;
-  }
-
-  minusForce(point) {
-    return point.x >= 2 * this.game.surfaceWidth / 3 - 75
-        && point.x < 2 * this.game.surfaceWidth / 3
-        && point.y >= 550
-        && point.y <= 610;
-  }
-
-  plusHealth(point) {
-    return point.x >= this.game.surfaceWidth / 3 
-        && point.x <= this.game.surfaceWidth / 3 + 75
-        && point.y >= 550
-        && point.y <= 610;
-  }
-
-  minusHealth(point) {
-    return point.x >= this.game.surfaceWidth / 3 - 75
-        && point.x < this.game.surfaceWidth / 3
-        && point.y >= 550
-        && point.y <= 610;
-  }
-
-  pressContinue(point) {
-    return point.x >= this.game.surfaceWidth/2 - 50 
-        && point.x <= this.game.surfaceWidth/2 + 50
-        && point.y >= 625
-        && point.y <= 675;
   }
 }

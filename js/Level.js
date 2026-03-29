@@ -54,11 +54,13 @@ class Level {
   }
 
   set() {
-    this.tiles = [];
-    this.unspawnedDroids = []; // when spawned, pass to game engine
-    this.unspawnedPowerups = [];
-    this.unspawnedBoss = null; //when boss is spawned create and display the boss' health bar.
-    this._parseTiles();
+    var result = LevelLoader.load(this, this.game, this.sceneManager);
+    this.tiles             = result.tiles;
+    this.unspawnedDroids   = result.unspawnedDroids;
+    this.unspawnedPowerups = result.unspawnedPowerups;
+    this.unspawnedBoss     = result.unspawnedBoss;
+    // CheckPoints are entities that need to be registered with the scene
+    result.checkpoints.forEach(cp => this.sceneManager.addEntity(cp));
   }
 
   instantiateLayers(backgrounds, tileImages) {
@@ -71,76 +73,6 @@ class Level {
       rightTile: this.game.assetManager.getAsset(tileImages.rightTile),
       leftRightTile: this.game.assetManager.getAsset(tileImages.leftRightTile)
     };
-  }
-
-  _parseTiles() {
-    var rows = this.levelLayout.length;
-    var rowHeight = this.camera.height / rows;
-    this.length = this.levelLayout[0].length * this.tileWidth;
-
-    for (let i = 0; i < rows; i++) {
-      for (let j = 0; j < this.levelLayout[i].length; j++) {
-        if (this.levelLayout[i][j] === ' ') {
-          continue;
-        } else if (this.levelLayout[i][j] === '-') { // tile
-          var image = this.tileImages.centerTile;
-          if (this.levelLayout[i][j - 1] !== '-' && this.levelLayout[i][j + 1] !== '-') {
-            image = this.tileImages.leftRightTile;
-          } else if (this.levelLayout[i][j - 1] !== '-') {
-            image = this.tileImages.leftTile;
-          } else if (this.levelLayout[i][j + 1] !== '-') {
-            image = this.tileImages.rightTile;
-          }
-          var tile = new Tile(this, image, j * this.tileWidth, i * this.camera.height / rows);
-          this.tiles.push(tile);
-        } else if (this.levelLayout[i][j] === '~') { // falling tile
-            let roundedTile = this.tileImages.leftRightTile;
-            let fallingTile = new FallingTile(this, roundedTile, j * this.tileWidth, i * this.camera.height / rows);
-            this.tiles.push(fallingTile);
-        } else if (this.levelLayout[i][j] === '=') { // moving tile
-          var image2 = this.tileImages.centerTile;
-          if (this.levelLayout[i][j - 1] !== '=' && this.levelLayout[i][j + 1] !== '=') {
-            image2 = this.tileImages.leftRightTile;
-          } else if (this.levelLayout[i][j - 1] !== '=') {
-            image2 = this.tileImages.leftTile;
-          } else if (this.levelLayout[i][j + 1] !== '=') {
-            image2 = this.tileImages.rightTile;
-          }
-          var movingTile = new MovingTile(this, image2, j * this.tileWidth, i * this.camera.height / rows, lc.TILE_INITIAL_VELOCITY, 0, lc.TILE_ACCELERATION);
-          this.tiles.push(movingTile);
-        } else if (this.levelLayout[i][j] === 'd') { // basic droid
-          this.unspawnedDroids.push(new BasicDroid(this.game, this.game.assetManager.getAsset("img/enemies/droid-j-row.png"), j * this.tileWidth, i * rowHeight, 14, .2, 100, 100, Constants.DroidBasicConstants.BASIC_DROID_SCALE, 45));
-        } else if (this.levelLayout[i][j] === 's') { // scatter shot droid
-          this.unspawnedDroids.push(new ScatterShotDroid(this.game, this.game.assetManager.getAsset("img/enemies/Droid 3.png"), j * this.tileWidth, i * rowHeight, 10, .2));
-        } else if (this.levelLayout[i][j] === 'b') { // slow burst droid
-          this.unspawnedDroids.push(new SlowBurstDroid(this.game, this.game.assetManager.getAsset("img/enemies/Droid 1.png"), j * this.tileWidth, i * rowHeight, 2, .8));
-        } else if (this.levelLayout[i][j] === 'f') { // fast burst droid
-          this.unspawnedDroids.push(new FastBurstDroid(this.game, this.game.assetManager.getAsset("img/enemies/Droid 2.png"), j * this.tileWidth, i * rowHeight, 10, .12));
-        } else if (this.levelLayout[i][j] === 'n') { // sniper droid
-          this.unspawnedDroids.push(new SniperDroid(this.game, this.game.assetManager.getAsset("img/enemies/Droid 4.png"), j * this.tileWidth, i * rowHeight, 6, .2));
-        } else if (this.levelLayout[i][j] === 'm') { // multishot droid
-          this.unspawnedDroids.push(new MultishotDroid(this.game, this.game.assetManager.getAsset("img/enemies/Droid 5.png"), j * this.tileWidth, i * rowHeight, 21, .12));
-        } else if (this.levelLayout[i][j] === 'X') { // Boss
-          this.unspawnedBoss = new Boss(this.game, j * this.tileWidth, i * this.game.surfaceHeight / rows);
-        } else if (this.levelLayout[i][j] === '*') { // leggy boss droid
-          this.unspawnedDroids.push(new LeggyDroidBoss(this.game, this.game.assetManager.getAsset("img/enemies/leggy_droid.png"), j * this.tileWidth, i * rowHeight, 4, .51));
-        } else if (this.levelLayout[i][j] === 'H') { //health powerup
-          this.unspawnedPowerups.push(new HealthPowerUp(this.game, this.game.assetManager.getAsset("img/ui/powerup_health.png"), j * this.tileWidth, i * rowHeight));
-        } else if (this.levelLayout[i][j] === 'F') { //force powerup
-          this.unspawnedPowerups.push(new ForcePowerUp(this.game, this.game.assetManager.getAsset("img/ui/powerup_force.png"), j * this.tileWidth, i * rowHeight));
-        } else if (this.levelLayout[i][j] === 'I') { //invincibility powerup
-          this.unspawnedPowerups.push(new InvincibilityPowerUp(this.game, this.game.assetManager.getAsset('img/ui/powerup_invincibility.png'), j * this.tileWidth, i * this.game.surfaceHeight / rows));
-        } else if (this.levelLayout[i][j] === 'S') { //split laser powerup
-          this.unspawnedPowerups.push(new SplitLaserPowerUp(this.game, j * this.tileWidth, i * this.game.surfaceHeight / rows));
-        } else if (this.levelLayout[i][j] === 'T') { // tiny mode powerup
-          this.unspawnedPowerups.push(new TinyModePowerUp(this.game, j * this.tileWidth, i * this.game.surfaceHeight / rows));
-        } else if (this.levelLayout[i][j] === 'W') { // homing laser power up
-          this.unspawnedPowerups.push(new HomingLaserPowerUp(this.game, j * this.tileWidth, i * rowHeight));
-        } else if (this.levelLayout[i][j] === 'C') { //checkpoint
-          this.sceneManager.addEntity(new CheckPoint(this.game, j * this.tileWidth, (i + 1) * rowHeight));
-        }
-      }
-    }
   }
 
   update() {

@@ -35,7 +35,22 @@ class AbstractDroid extends Entity {
 	 * and moving and will be implemented more in each childDroid
 	 */
 	update() {
+		if (this.ghost) {
+			this.ghostUpdate();
+			return;
+		}
 		super.update();
+	}
+
+	/**
+	 * Dead-reckoning movement for ghost (P2-side copy) droids.
+	 * Moves at last-known velocity; snapshot reconciliation owns position corrections.
+	 */
+	ghostUpdate() {
+		this.x += this.deltaX * this.game.clockTick;
+		this.y += this.deltaY * this.game.clockTick;
+		this.boundCircle.x += this.deltaX * this.game.clockTick;
+		this.boundCircle.y += this.deltaY * this.game.clockTick;
 	}
 	draw() {
 		var camera = this.sceneManager.camera;
@@ -126,16 +141,22 @@ class DroidLaser extends Entity {
 		return new DroidLaser(game, startX, startY, speed, targetX, targetY, length, width, color, deflectedColor);
 	}
 
+	/**
+	 * Dead-reckoning movement for ghost (P2-side copy) lasers.
+	 * Does not remove on screen exit — snapshot reconciliation owns ghost lifetime.
+	 */
+	ghostUpdate() {
+		this.prevX = this.x;
+		this.prevY = this.y;
+		this.x     += this.deltaX * this.game.clockTick;
+		this.y     += this.deltaY * this.game.clockTick;
+		this.tailX += this.deltaX * this.game.clockTick;
+		this.tailY += this.deltaY * this.game.clockTick;
+	}
+
 	update() {
 		if (this.ghost) {
-			// Dead-reckoning between snapshots: move linearly until next correction arrives
-			this.prevX = this.x;
-			this.prevY = this.y;
-			this.x     += this.deltaX * this.game.clockTick;
-			this.y     += this.deltaY * this.game.clockTick;
-			this.tailX += this.deltaX * this.game.clockTick;
-			this.tailY += this.deltaY * this.game.clockTick;
-			// Do NOT remove on screen exit — snapshot reconciliation owns ghost lifetime
+			this.ghostUpdate();
 			return;
 		}
 
