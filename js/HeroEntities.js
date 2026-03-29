@@ -429,6 +429,17 @@ class Zerlin extends Entity {
     this.boundingbox.hidden = true;
   }
 
+  revive(health) {
+    this.alive = true;
+    this.currentHealth = health;
+    this.deathAnimation.elapsedTime = 0;
+    this.reviveProgress = 0;
+    this.lightsaber.hidden = false;
+    this.setXY(this.x, this.y); // recomputes bounding box now that alive = true
+    this.boundingbox.hidden = false;
+    this.enableInvincibility();
+  }
+
   setXY(x, y) {
     this.x = x;
     this.y = y;
@@ -704,6 +715,7 @@ class Zerlin extends Entity {
       zc.Z_DEATH_FRAMES,
       false, false,
       zc.Z_SCALE);
+    this.deathAnimation.freezeOnLastFrame = true;
   }
 }
 

@@ -36,7 +36,11 @@ class Animation {
         this.elapsedTime = 0;
       }
     } else if (this.isDone()) {
-      return;
+      if (this.freezeOnLastFrame) {
+        this.elapsedTime = this.totalTime - 0.0001; // clamp so currentFrame() returns last frame
+      } else {
+        return;
+      }
     }
     var index = this.reverse ? this.frames - this.currentFrame() - 1 : this.currentFrame();
     var vindex = 0;

@@ -129,6 +129,8 @@ class DroidLaser extends Entity {
 	update() {
 		if (this.ghost) {
 			// Dead-reckoning between snapshots: move linearly until next correction arrives
+			this.prevX = this.x;
+			this.prevY = this.y;
 			this.x     += this.deltaX * this.game.clockTick;
 			this.y     += this.deltaY * this.game.clockTick;
 			this.tailX += this.deltaX * this.game.clockTick;

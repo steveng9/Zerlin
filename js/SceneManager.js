@@ -749,6 +749,13 @@ class SceneManager2 {
     this.addEntity(new HealthStatusBarP2(this.game, this, p2BarX, 25));
     this.addEntity(new ForceStatusBarP2(this.game, this, p2BarX, 50));
 
+    // Revive / restart state
+    this._mpRestartPending = false;
+    this._mpRestartReadyToExecute = false;
+    this._mpRestartTimer = null;
+    this._prevP1Space = false;
+    this._prevP2Space = false;
+
     // Networking
     this.pendingSnapshot = null;
     this.lastP1State = null;
@@ -955,6 +962,11 @@ class SceneManager2 {
       // Client: apply snapshot corrections AFTER physics so positions are
       // authoritative but Zerlin has valid gravity/platform state each frame.
       if (this.multiplayerActive && this.Zerlin2 && !this.game.network.isHost && this.pendingSnapshot) {
+        if (this.pendingSnapshot.restartMultiplayer) {
+          this.game.audio.endAllSoundFX();
+          this.startMultiplayerTrainingScene();
+          return;
+        }
         this._applyPlayerFromSnapshot(this.Zerlin,  this.pendingSnapshot.p1);
         this._applyPlayerFromSnapshot(this.Zerlin2, this.pendingSnapshot.p2);
         this._applyEntitySnapshot(this.pendingSnapshot);
@@ -1071,6 +1083,11 @@ class SceneManager2 {
           if (this.networkSnapshotTimer <= 0) {
             this.networkSnapshotTimer = 1 / 20;
             this.game.network.sendGameState(this._buildPlayerSnapshot());
+            if (this._mpRestartReadyToExecute) {
+              this.game.audio.endAllSoundFX();
+              this.startMultiplayerTrainingScene();
+              return;
+            }
           }
         } else {
           // Client: send local input to host every frame
@@ -1090,29 +1107,24 @@ class SceneManager2 {
       this.canPause = true;
     }
 
-    // P2 independent respawn (no full scene reset — just reset that player)
-    if (this.multiplayerActive && this.Zerlin2 && !this.Zerlin2.alive) {
-      if (this.levelSceneTimer > this.Zerlin2.timeOfDeath + this.Zerlin2.deathAnimation.totalTime + 1.5) {
-        this.Zerlin2.reset();
-        this.Zerlin2.setHealth();
+    if (this.multiplayerActive && this.Zerlin2) {
+      this._updateMultiplayerDeath();
+    } else {
+      // Single-player: wait for death animation then restart
+      if (!this.startedFinalOverlay && !this.Zerlin.alive) {
+        this.canPause = false;
+        if (this.levelSceneTimer > this.Zerlin.timeOfDeath + this.Zerlin.deathAnimation.totalTime) {
+          this.startedFinalOverlay = true;
+          this.stopLevelTime = this.levelSceneTimer + 1.5;
+          this.startNewScene = true;
+        }
       }
-    }
-
-    // On P1 death: wait for death animation then restart training ground quickly
-    if (!this.startedFinalOverlay && !this.Zerlin.alive) {
-      this.canPause = false;
-      if (this.levelSceneTimer > this.Zerlin.timeOfDeath + this.Zerlin.deathAnimation.totalTime) {
-        this.startedFinalOverlay = true;
-        this.stopLevelTime = this.levelSceneTimer + 1.5;
-        this.startNewScene = true;
+      if ((this.levelSceneTimer > this.stopLevelTime && this.startNewScene)
+       || (!this.Zerlin.alive && this.game.keys['Enter'])) {
+        this.game.audio.endAllSoundFX();
+        this.startTrainingGroundScene();
+        this.startNewScene = false;
       }
-    }
-
-    if ((this.levelSceneTimer > this.stopLevelTime && this.startNewScene)
-     || (!this.Zerlin.alive && this.game.keys['Enter'])) {
-      this.game.audio.endAllSoundFX();
-      this.startTrainingGroundScene();
-      this.startNewScene = false;
     }
   }
 
@@ -1151,6 +1163,10 @@ class SceneManager2 {
     for (let i = 0; i < this.sceneEntities.length; i++) {
       this.sceneEntities[i].draw();
     }
+    if (this.multiplayerActive && this.Zerlin2) {
+      this._drawReviveIndicator(this.Zerlin);
+      this._drawReviveIndicator(this.Zerlin2);
+    }
     if (this.paused) {
       this.pauseScreen.draw();
     }
@@ -1181,14 +1197,103 @@ class SceneManager2 {
     return Math.abs(fromX - z1.x) <= Math.abs(fromX - this.Zerlin2.x) ? z1 : this.Zerlin2;
   }
 
+  _updateMultiplayerDeath() {
+    var Z1 = this.Zerlin, Z2 = this.Zerlin2;
+    var isHost = this.game.network && this.game.network.isHost;
+
+    // Both dead: wait for both animations, then signal a restart
+    if (!Z1.alive && !Z2.alive) {
+      var bothAnimDone = this.levelSceneTimer > Z1.timeOfDeath + Z1.deathAnimation.totalTime
+                      && this.levelSceneTimer > Z2.timeOfDeath + Z2.deathAnimation.totalTime;
+      if (isHost && bothAnimDone) {
+        if (this._mpRestartTimer === null) {
+          this._mpRestartTimer = this.levelSceneTimer + smc.MP_RESTART_DELAY;
+        }
+        if (this.levelSceneTimer >= this._mpRestartTimer) {
+          this._mpRestartPending = true;
+        }
+      }
+      return; // no revive possible when both are dead
+    }
+    this._mpRestartTimer = null;
+
+    // Host-only revive logic
+    if (!isHost) return;
+
+    var inp = this.game.network.lastReceivedInput || {};
+    var p1SpaceDown = this.game.keys['Space']               && !this._prevP1Space;
+    var p2SpaceDown = inp.keys && inp.keys['Space']         && !this._prevP2Space;
+    this._prevP1Space = !!this.game.keys['Space'];
+    this._prevP2Space = !!(inp.keys && inp.keys['Space']);
+
+    // Z1 dead: Z2 revives with Space
+    if (!Z1.alive && Z2.alive) {
+      if (Math.abs(Z2.x - Z1.x) < smc.MP_REVIVE_DISTANCE && p2SpaceDown) {
+        Z1.reviveProgress = (Z1.reviveProgress || 0) + 1;
+        if (Z1.reviveProgress >= smc.MP_REVIVE_PRESSES_NEEDED) {
+          Z1.revive(smc.MP_REVIVE_HEALTH);
+        }
+      }
+    }
+
+    // Z2 dead: Z1 revives with Space
+    if (!Z2.alive && Z1.alive) {
+      if (Math.abs(Z1.x - Z2.x) < smc.MP_REVIVE_DISTANCE && p1SpaceDown) {
+        Z2.reviveProgress = (Z2.reviveProgress || 0) + 1;
+        if (Z2.reviveProgress >= smc.MP_REVIVE_PRESSES_NEEDED) {
+          Z2.revive(smc.MP_REVIVE_HEALTH);
+        }
+      }
+    }
+  }
+
+  _drawReviveIndicator(zerlin) {
+    if (zerlin.alive) return;
+    if (this.levelSceneTimer < zerlin.timeOfDeath + zerlin.deathAnimation.totalTime) return;
+
+    var ctx = this.game.ctx;
+    var screenX = zerlin.x - this.camera.x;
+    var screenY = zerlin.y - 80;
+    var pulse   = 0.6 + 0.4 * Math.sin(this.levelSceneTimer * 5);
+    var progress = zerlin.reviveProgress || 0;
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = '18px ' + smc.GAME_FONT;
+
+    // Pulsing "SPACE to revive" label
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = '#fff';
+    ctx.fillText('SPACE to revive', screenX, screenY);
+
+    // Progress bar (only shown once at least one press has happened)
+    if (progress > 0) {
+      var barW = 90, barH = 10;
+      var filled = (progress / smc.MP_REVIVE_PRESSES_NEEDED) * barW;
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = '#333';
+      ctx.fillRect(screenX - barW / 2, screenY + 6, barW, barH);
+      ctx.fillStyle = '#4af';
+      ctx.fillRect(screenX - barW / 2, screenY + 6, filled, barH);
+    }
+
+    ctx.restore();
+  }
+
   _buildPlayerSnapshot() {
-    return {
-      p1:     this._serializePlayer(this.Zerlin),
-      p2:     this._serializePlayer(this.Zerlin2),
-      kills:  this.trainingKills,
-      droids: this.droids.map(d => this._serializeDroid(d)),
-      lasers: this.lasers.map(l => this._serializeLaser(l)),
+    var snap = {
+      p1:       this._serializePlayer(this.Zerlin),
+      p2:       this._serializePlayer(this.Zerlin2),
+      kills:    this.trainingKills,
+      droids:   this.droids.map(d => this._serializeDroid(d)),
+      lasers:   this.lasers.map(l => this._serializeLaser(l)),
+      powerups: this.powerups.map(p => ({ type: p.constructor.name, x: p.x, startY: p.startY })),
     };
+    if (this._mpRestartPending) {
+      snap.restartMultiplayer = true;
+      this._mpRestartReadyToExecute = true; // restart on next frame after this snapshot is sent
+    }
+    return snap;
   }
 
   _serializeDroid(d) {
@@ -1299,6 +1404,27 @@ class SceneManager2 {
         this.lasers.push(ghostLaser);
       }
     }
+
+    // ── POWERUPS ──────────────────────────────────────────────────────────────
+    var snapPowerups = snap.powerups;
+    if (snapPowerups) {
+      // Remove local powerups that no longer exist on the host (grabbed by a player)
+      for (var i = this.powerups.length - 1; i >= 0; i--) {
+        var lp = this.powerups[i];
+        var inSnap = snapPowerups.some(sp => sp.type === lp.constructor.name && Math.abs(sp.x - lp.x) < 5);
+        if (!inSnap) {
+          this.powerups.splice(i, 1);
+        }
+      }
+      // Add powerups that respawned on the host but don't exist locally yet
+      for (var sp of snapPowerups) {
+        var existsLocally = this.powerups.some(lp => lp.constructor.name === sp.type && Math.abs(lp.x - sp.x) < 5);
+        if (!existsLocally) {
+          var newPu = this._createTrainingPowerup(sp.type, sp.x, sp.startY);
+          if (newPu) this.powerups.push(newPu);
+        }
+      }
+    }
   }
 
   /**
@@ -1351,6 +1477,7 @@ class SceneManager2 {
       lightningStartX:  z.lightsaber ? (z.lightsaber.lastLightningStartX || 0) : 0,
       lightningStartY:  z.lightsaber ? (z.lightsaber.lastLightningStartY || 0) : 0,
       lightningAngle:   z.lightsaber ? (z.lightsaber.lastLightningAngle  || 0) : 0,
+      reviveProgress:   z.reviveProgress || 0,
     };
   }
 
@@ -1368,6 +1495,8 @@ class SceneManager2 {
       zerlin.lightsaber.angle = state.saberAngle;
       zerlin.lightsaber.updateCollisionLine();
     }
+    if (state.reviveProgress !== undefined) zerlin.reviveProgress = state.reviveProgress;
+    if (state.alive && !zerlin.alive) zerlin.revive(state.health);
     // Sync facing direction (also recomputes bounding box)
     if (state.facingRight !== zerlin.facingRight) {
       state.facingRight ? zerlin.faceRight() : zerlin.faceLeft();
@@ -1429,11 +1558,37 @@ class SceneManager2 {
     if (this.infiniteHealth) {
       this.infiniteHealth = false;
       this.Zerlin.infiniteHealth = false;
+      if (this.Zerlin2) this.Zerlin2.infiniteHealth = false;
     } else {
       this.infiniteHealth = true;
       this.Zerlin.infiniteHealth = true;
+      if (this.Zerlin2) this.Zerlin2.infiniteHealth = true;
     }
     this.Zerlin.setHealth();
+    if (this.Zerlin2) this.Zerlin2.setHealth();
+  }
+
+  /**
+   * Factory for recreating a powerup token at an arbitrary position.
+   * Used by the respawn queue in trainingGroundUpdate and by powerup snapshot reconciliation.
+   */
+  _createTrainingPowerup(type, x, y) {
+    var am = this.game.assetManager;
+    switch (type) {
+      case 'HealthPowerUp':
+        return new HealthPowerUp(this.game, am.getAsset('img/ui/powerup_health.png'), x, y);
+      case 'ForcePowerUp':
+        return new ForcePowerUp(this.game, am.getAsset('img/ui/powerup_force.png'), x, y);
+      case 'InvincibilityPowerUp':
+        return new InvincibilityPowerUp(this.game, am.getAsset('img/ui/powerup_invincibility.png'), x, y);
+      case 'HomingLaserPowerUp':
+        return new HomingLaserPowerUp(this.game, x, y);
+      case 'SplitLaserPowerUp':
+        return new SplitLaserPowerUp(this.game, x, y);
+      case 'TinyModePowerUp':
+        return new TinyModePowerUp(this.game, x, y);
+    }
+    return null;
   }
 }
 
@@ -1557,29 +1712,6 @@ class PauseScreen {
     ctx.fillText("Checkpoint", 800, 635);
 
     ctx.restore();
-  }
-
-  /**
-   * Factory for recreating a powerup token at an arbitrary position.
-   * Used exclusively by the respawn queue in trainingGroundUpdate.
-   */
-  _createTrainingPowerup(type, x, y) {
-    var am = this.game.assetManager;
-    switch (type) {
-      case 'HealthPowerUp':
-        return new HealthPowerUp(this.game, am.getAsset('img/ui/powerup_health.png'), x, y);
-      case 'ForcePowerUp':
-        return new ForcePowerUp(this.game, am.getAsset('img/ui/powerup_force.png'), x, y);
-      case 'InvincibilityPowerUp':
-        return new InvincibilityPowerUp(this.game, am.getAsset('img/ui/powerup_invincibility.png'), x, y);
-      case 'HomingLaserPowerUp':
-        return new HomingLaserPowerUp(this.game, x, y);
-      case 'SplitLaserPowerUp':
-        return new SplitLaserPowerUp(this.game, x, y);
-      case 'TinyModePowerUp':
-        return new TinyModePowerUp(this.game, x, y);
-    }
-    return null;
   }
 }
 

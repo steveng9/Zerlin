@@ -84,8 +84,8 @@ class HealthPowerUp extends AbstractPowerUp {
 
   }
   //heal zerlin to max hp or a certain amount.
-  effect() {
-    var zerlin = this.sceneManager.Zerlin;
+  effect(zerlin) {
+    zerlin = zerlin || this.sceneManager.Zerlin;
     zerlin.currentHealth += puc.RECOVER_HEALTH_AMOUNT;
     //can't heal past max health
     if (zerlin.currentHealth > zerlin.maxHealth) {
@@ -113,13 +113,12 @@ class ForcePowerUp extends AbstractPowerUp {
   }
 
   //recover zerlin's force power to max or a certain amount
-  effect() {
-    var zerlin = this.sceneManager.Zerlin;
+  effect(zerlin) {
+    zerlin = zerlin || this.sceneManager.Zerlin;
     zerlin.currentForce += puc.RECOVER_FORCE_AMOUNT;
     if (zerlin.currentForce > zerlin.maxForce) {
       zerlin.currentForce = zerlin.maxForce;
     }
-
   }
 }
 
@@ -148,9 +147,8 @@ class InvincibilityPowerUp extends AbstractPowerUp {
     this.smallScale = 1.5;
   }
 
-  effect() {
-    //this.sceneManager.Zerlin.invincible = true;
-    this.sceneManager.Zerlin.enableInvincibility();
+  effect(zerlin) {
+    (zerlin || this.sceneManager.Zerlin).enableInvincibility();
   }
 }
 
@@ -174,8 +172,9 @@ class HomingLaserPowerUp extends AbstractPowerUp {
     this.smallScale = puc.HOMING_LASER_STATUS_BAR_SCALE;
   }
 
-  effect() {
-    this.game.sceneManager.Zerlin.lightsaber.enableHomingLasers();
+  effect(zerlin) {
+    zerlin = zerlin || this.game.sceneManager.Zerlin;
+    if (zerlin.lightsaber) zerlin.lightsaber.enableHomingLasers();
   }
 }
 
@@ -197,9 +196,9 @@ class SplitLaserPowerUp extends AbstractPowerUp {
     this.smallScale = 0.30;
   }
 
-  effect() {
-    //this.game.sceneManager.Zerlin.lightsaber.splitLasers = true;
-    this.sceneManager.Zerlin.lightsaber.enableSplitLasers();
+  effect(zerlin) {
+    zerlin = zerlin || this.sceneManager.Zerlin;
+    if (zerlin.lightsaber) zerlin.lightsaber.enableSplitLasers();
   }
 }
 
@@ -221,8 +220,8 @@ class TinyModePowerUp extends AbstractPowerUp {
     this.smallScale = 0.30;
   }
 
-  effect() {
-    this.game.sceneManager.Zerlin.shrink();
+  effect(zerlin) {
+    (zerlin || this.game.sceneManager.Zerlin).shrink();
   }
 }
 

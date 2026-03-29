@@ -299,6 +299,12 @@ Michael Josten`,
 
     // Seconds after a powerup token is grabbed before it respawns at its home position
     POWERUP_RESPAWN_DELAY: 60,
+
+    // Multiplayer revive mechanic
+    MP_REVIVE_DISTANCE:      150,  // px — how close the alive player must be to the dead body
+    MP_REVIVE_PRESSES_NEEDED: 5,   // number of distinct Space presses required
+    MP_REVIVE_HEALTH:         5,   // health restored on revive (out of 15)
+    MP_RESTART_DELAY:         1.5, // seconds after both die before restarting
   },
 
   CollisionManagerConstants: {

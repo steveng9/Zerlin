@@ -21,30 +21,33 @@ class CollisionManager {
   }
 
   handleCollisions() {
-    // On the multiplayer client all game entities (droids, lasers) are ghost copies
-    // whose authoritative state is driven entirely by the host snapshot. Skip all
-    // collision resolution here — results arrive via snapshot corrections.
-    if (this.sceneManager.multiplayerActive && this.game.network && !this.game.network.isHost) {
-      return;
+    // On the multiplayer client, skip only collisions that would mutate ghost entities
+    // (droids, lasers) — those are host-authoritative and arrive via snapshot.
+    // Everything that affects the local player (Z2's platform, body hits, saber
+    // deflection, saber catch, beam/bomb damage) runs on both host and client.
+    // ZerlinOnPowerup is the one exception: host-authoritative, synced via snapshot.
+    var isClient = this.sceneManager.multiplayerActive && this.game.network && !this.game.network.isHost;
+
+    if (!isClient) {
+      // this.droidOnDroid();
+      this.droidOnSaber();   // kills ghost droids — host only
+      this.laserOnDroid();   // kills ghost droids — host only
+      this.beamOnDroid();    // kills ghost droids — host only
+      this.beamOnPlatform(); // mutates boss beam segments — host only
+      this.saberOnBoss();
+      this.laserOnBoss();
+      this.beamOnBoss();
+      this.bombOnPlatform();
+      this.ZerlinOnPowerup(); // host-authoritative, client syncs via snapshot
     }
 
-    // this.droidOnDroid();
-    this.droidOnSaber();
-    this.laserOnDroid();
     this.laserOnSaber();
     this.laserOnZerlin();
-    this.ZerlinOnPowerup();
     this.ZerlinOnPlatform();
     this.ZerlinOnEdgeOfMap();
-    this.beamOnPlatform();
     this.beamOnSaber();
     this.beamOnZerlin();
-    this.beamOnDroid();
-    this.beamOnBoss();
-    this.saberOnBoss();
-    this.laserOnBoss();
     this.catchSaber();
-    this.bombOnPlatform();
     this.bombExplosionOnZerlin();
     this.ZerlinOnCheckpoint();
 
@@ -218,24 +221,25 @@ class CollisionManager {
   }
 
   ZerlinOnPowerup() {
-    var zerlin = this.sceneManager.Zerlin;
+    this._playerOnPowerup(this.sceneManager.Zerlin);
+    if (this.sceneManager.multiplayerActive && this.sceneManager.Zerlin2) {
+      this._playerOnPowerup(this.sceneManager.Zerlin2);
+    }
+  }
+
+  _playerOnPowerup(zerlin) {
     for (var i = 0; i < this.sceneManager.powerups.length; i++) {
       var powerup = this.sceneManager.powerups[i];
+      if (powerup.removeFromWorld) continue; // already grabbed this frame
       if (collideCircleWithRectangle(powerup.boundCircle.x, powerup.boundCircle.y, powerup.boundCircle.radius,
           zerlin.boundingbox.x, zerlin.boundingbox.y, zerlin.boundingbox.width, zerlin.boundingbox.height)) {
-
-        //play power up pickup sound
         this.sceneManager.addActivePowerup(powerup);
-        // call the powerup effect.
-        powerup.effect();
+        powerup.effect(zerlin);
         powerup.playSound();
-
         powerup.wasPickedUp = true;
         powerup.removeFromWorld = true;
       }
-
     }
-
   }
 
   ZerlinOnPlatform() {
