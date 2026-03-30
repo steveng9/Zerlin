@@ -48,7 +48,7 @@ class SceneManager2 {
     this.game = game;
     this.camera = new Camera(this, 0, 0, this.game.ctx.canvas.width, this.game.ctx.canvas.height);
     this.checkPoint = new CheckPoint(this.game, 0, 0);
-    this.infiniteHealth = true;
+    this.infiniteHealth = false;
     this.Zerlin = new Zerlin(this.game, this.camera, this);
     this.boss = null;
     this.collisionManager = new CollisionManager(this.game, this);

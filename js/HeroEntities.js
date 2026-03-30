@@ -40,6 +40,9 @@ class Zerlin extends Entity {
     this.crouching = false;
     this.falling = true;
     this.forceJumping = false;
+    this.forceJumpFinalAnim = false;
+    this.forceJumpCharging = false;
+    this.forceJumpChargeTimer = 0;
     this.slashing = false;
     this.slashingDirection = 0;
     this.slashZone = {};  // must exist before startSlash() to avoid crash on P2's machine
@@ -54,6 +57,9 @@ class Zerlin extends Entity {
     this.lightsaber = new Lightsaber(this.game, this);
     this.deathAnimation.elapsedTime = 0;
 
+
+    /* saber color — initialized to the game's current slider value if available */
+    if (this.saberHue === undefined) this.saberHue = 240;
 
     /* powerup status' of zerlin */
     this.invincible = false;
@@ -151,22 +157,22 @@ class Zerlin extends Entity {
           }
 
         } else if (this.game.keys[kc.JUMP_FORCE] && this.game.keys[kc.JUMP] && !this.falling) {
-          //check if zerlin has enough force for force jump
-          this.tile = null;
-          this.falling = true;
           if (this.currentForce - zc.Z_FORCE_JUMP_FORCE_COST >= 0) {
-            /** for testing sound */
-            this.game.audio.playSoundFx(this.game.audio.hero, 'forceJump', 0.2);
-            this.deltaY = zc.FORCE_JUMP_DELTA_Y;
-            //make force jump cost force power
+            // Begin charge: squat animation plays on ground, launch fires after FORCE_JUMP_CHARGE_DELAY
             this.currentForce -= zc.Z_FORCE_JUMP_FORCE_COST;
-            // turn off saber — player is vulnerable until just before peak
-            this.forceJumping = true;
+            this.forceJumpFinalAnim = false;
+            this.forceJumpCharging = true;
+            this.forceJumpChargeTimer = zc.FORCE_JUMP_CHARGE_DELAY;
+            this.forceJumpPreRightAnim.elapsedTime = 0;
+            this.forceJumpPreLeftAnim.elapsedTime = 0;
+            this.forceJumpFinalRightAnim.elapsedTime = 0;
+            this.forceJumpFinalLeftAnim.elapsedTime = 0;
             this.game.audio.saberHum.stop();
             this.lightsaber.hidden = true;
-          }
-          //otherwise do a regular jump
-          else {
+          } else {
+            // Not enough force — regular jump, no charge delay
+            this.tile = null;
+            this.falling = true;
             this.deltaY = zc.JUMP_DELTA_Y;
           }
 
@@ -181,15 +187,64 @@ class Zerlin extends Entity {
         }
       }
 
-      if (this.falling) {
+      if (this.forceJumpCharging) {
+        var dt = this.game.clockTick;
+        // Advance squat animation during ground charge
+        var preMax = this.forceJumpPreRightAnim.totalTime - 0.0001;
+        this.forceJumpPreRightAnim.elapsedTime = Math.min(this.forceJumpPreRightAnim.elapsedTime + dt, preMax);
+        this.forceJumpPreLeftAnim.elapsedTime  = Math.min(this.forceJumpPreLeftAnim.elapsedTime  + dt, preMax);
+        this.forceJumpChargeTimer -= dt;
+        if (this.forceJumpChargeTimer <= 0) {
+          // Launch — snap position to where physics would put Zerlin after CHARGE_DELAY seconds of flight
+          var ct = zc.FORCE_JUMP_CHARGE_DELAY;
+          this.forceJumpCharging = false;
+          this.tile = null;
+          this.falling = true;
+          this.y += zc.FORCE_JUMP_DELTA_Y * ct + 0.5 * zc.GRAVITATIONAL_ACCELERATION * ct * ct;
+          this.deltaY = zc.FORCE_JUMP_DELTA_Y + zc.GRAVITATIONAL_ACCELERATION * ct;
+          this.updateBoundingBox();
+          this.forceJumping = true;
+          this.game.audio.playSoundFx(this.game.audio.hero, 'forceJump', 0.2);
+        }
+      } else if (this.falling) {
         this.lastBottom = this.boundingbox.bottom;
         this.deltaY += zc.GRAVITATIONAL_ACCELERATION * this.game.clockTick;
-        // re-ignite saber just before the peak of a force jump
-        if (this.forceJumping && this.deltaY > zc.FORCE_JUMP_REIGNITE_THRESHOLD) {
-          this.forceJumping = false;
-          this.game.audio.playSoundFx(this.game.audio.lightsaber, 'lightsaberOn', 0.04);
-          this.game.audio.playSoundFx(this.game.audio.saberHum);
-          this.lightsaber.hidden = false;
+        if (this.forceJumping) {
+          var dt = this.game.clockTick;
+          if (!this.forceJumpFinalAnim) {
+            // Advance both pre-animations together (direction may change mid-jump)
+            var preMax = this.forceJumpPreRightAnim.totalTime - 0.0001;
+            this.forceJumpPreRightAnim.elapsedTime = Math.min(this.forceJumpPreRightAnim.elapsedTime + dt, preMax);
+            this.forceJumpPreLeftAnim.elapsedTime  = Math.min(this.forceJumpPreLeftAnim.elapsedTime  + dt, preMax);
+            // Start final frames early enough that they complete at FORCE_JUMP_REIGNITE_THRESHOLD
+            var finalAnimStart = zc.FORCE_JUMP_REIGNITE_THRESHOLD
+              - this.forceJumpFinalRightAnim.totalTime * zc.GRAVITATIONAL_ACCELERATION;
+            if (this.deltaY > finalAnimStart) {
+              this.forceJumpFinalAnim = true;
+              this.forceJumpFinalRightAnim.elapsedTime = 0;
+              this.forceJumpFinalLeftAnim.elapsedTime  = 0;
+            }
+          } else {
+            // Advance final animation; both stay in sync so direction changes look right
+            this.forceJumpFinalRightAnim.elapsedTime += dt;
+            this.forceJumpFinalLeftAnim.elapsedTime  += dt;
+            // Animation complete — reignite saber
+            if (this.forceJumpFinalRightAnim.isDone()) {
+              this.forceJumping = false;
+              this.forceJumpFinalAnim = false;
+              this.game.audio.playSoundFx(this.game.audio.lightsaber, 'lightsaberOn', 0.04);
+              this.game.audio.playSoundFx(this.game.audio.saberHum);
+              this.lightsaber.hidden = false;
+            }
+          }
+          // Hard fallback: if still jumping at peak, reignite regardless
+          if (this.forceJumping && this.deltaY > zc.FORCE_JUMP_REIGNITE_THRESHOLD) {
+            this.forceJumping = false;
+            this.forceJumpFinalAnim = false;
+            this.game.audio.playSoundFx(this.game.audio.lightsaber, 'lightsaberOn', 0.04);
+            this.game.audio.playSoundFx(this.game.audio.saberHum);
+            this.lightsaber.hidden = false;
+          }
         }
       }
 
@@ -309,14 +364,21 @@ class Zerlin extends Entity {
         this.drawX = this.x - (zc.Z_SLASH_WIDTH - zc.Z_ARM_SOCKET_X_SLASH_FRAME) * this.scale;
         this.animation = this.slashingLeftAnimation;
       }
+    } else if (this.forceJumpCharging) {
+      // Ground squat — pre-animation plays before launch
+      this.animation = this.facingRight ? this.forceJumpPreRightAnim : this.forceJumpPreLeftAnim;
+      this.drawX = this.facingRight
+        ? this.x - zc.Z_FORCE_JUMP_ANCHOR_RIGHT * zc.Z_FORCE_JUMP_ANIM_SCALE
+        : this.x - zc.Z_FORCE_JUMP_ANCHOR_LEFT  * zc.Z_FORCE_JUMP_ANIM_SCALE;
     } else if (this.falling) {
       if (this.forceJumping && this.deltaY < 0) {
-        // force jump ascent — use the jump sprite (arm built in, saber hidden)
-        var jumpScale = this.scale * zc.Z_JUMP_SCALE_FACTOR;
-        this.animation = this.forceJumpAscentAnimation;
+        // force jump ascent — use the 10-frame force jump sprites (saber arm hidden separately)
+        this.animation = this.forceJumpFinalAnim
+          ? (this.facingRight ? this.forceJumpFinalRightAnim : this.forceJumpFinalLeftAnim)
+          : (this.facingRight ? this.forceJumpPreRightAnim   : this.forceJumpPreLeftAnim);
         this.drawX = this.facingRight
-          ? this.x - zc.Z_JUMP_ARM_SOCKET_X * jumpScale
-          : this.x - (zc.Z_JUMP_IMAGE_WIDTH - zc.Z_JUMP_ARM_SOCKET_X) * jumpScale;
+          ? this.x - zc.Z_FORCE_JUMP_ANCHOR_RIGHT * zc.Z_FORCE_JUMP_ANIM_SCALE
+          : this.x - zc.Z_FORCE_JUMP_ANCHOR_LEFT  * zc.Z_FORCE_JUMP_ANIM_SCALE;
       } else if (this.facingRight) {
         this.animation = this.deltaY < 0 ? this.fallingUpAnimation : this.fallingDownAnimation;
         this.drawX = this.x - zc.Z_ARM_SOCKET_X * this.scale;
@@ -352,26 +414,21 @@ class Zerlin extends Entity {
       }
     }
 
-    var activeScale = (this.forceJumping && this.deltaY < 0 && !this.slashing) ? this.scale * zc.Z_JUMP_SCALE_FACTOR : this.scale;
+    var usingForceJumpAnim = (this.forceJumping && this.deltaY < 0 && !this.slashing) || this.forceJumpCharging;
+    var activeScale = usingForceJumpAnim ? zc.Z_FORCE_JUMP_ANIM_SCALE : this.scale;
     this.animation.scale = activeScale;
-    if (this.slashing) {
-      var orig = this.animation.spriteSheet;
-      this.animation.spriteSheet = this.game.getRecoloredSprite(orig);
-      this.animation.drawFrame(this.game.clockTick, this.ctx, this.drawX - this.camera.x, this.y - this.animation.frameHeight * activeScale);
-      this.animation.spriteSheet = orig;
-    } else if (this.forceJumping && this.deltaY < 0 && !this.facingRight) {
-      // mirror jump.png horizontally for left-facing (no left sprite exists)
-      var dX = this.drawX - this.camera.x;
-      var dY = this.y - this.animation.frameHeight * activeScale;
-      var dW = this.animation.frameWidth * activeScale;
-      this.ctx.save();
-      this.ctx.translate(dX + dW, dY);
-      this.ctx.scale(-1, 1);
-      this.animation.drawFrame(this.game.clockTick, this.ctx, 0, 0);
-      this.ctx.restore();
+    // Apply saber recoloring to every animation — the cache makes this free after
+    // the first call per (sprite, hue) pair. Walking/standing sprites contain no
+    // saber-colored pixels so the recolor is a no-op for them.
+    var _origSheet = this.animation.spriteSheet;
+    this.animation.spriteSheet = this.game.getRecoloredSprite(_origSheet, this.saberHue);
+    if (usingForceJumpAnim) {
+      // elapsed time is managed in update(); pass 0 to avoid double-advancing
+      this.animation.drawFrame(0, this.ctx, this.drawX - this.camera.x, this.y - this.animation.frameHeight * activeScale);
     } else {
       this.animation.drawFrame(this.game.clockTick, this.ctx, this.drawX - this.camera.x, this.y - this.animation.frameHeight * activeScale);
     }
+    this.animation.spriteSheet = _origSheet;
     this.lightsaber.draw();
 
     if (zc.DRAW_COLLISION_BOUNDRIES) {
@@ -420,7 +477,7 @@ class Zerlin extends Entity {
 
   die() {
     this.alive = false;
-    this.timeOfDeath = this.game.sceneManager.levelSceneTimer;
+    this.timeOfDeath = this.game.sceneManager.currentScene.levelSceneTimer;
     this.lightsaber.hidden = true;
     if (this.lightsaber.throwing) {
       this.lightsaber.catch();
@@ -463,7 +520,7 @@ class Zerlin extends Entity {
   }
 
   isInManeuver() {
-    return this.somersaulting || this.slashing;
+    return this.somersaulting || this.slashing || this.forceJumpCharging;
   }
 
   /*
@@ -626,6 +683,25 @@ class Zerlin extends Entity {
       1, 1,
       true, false,
       zc.Z_SCALE);
+    // Force jump ascent — 10-frame animation (pre: frames 0–4, final: frames 5–9)
+    this.forceJumpPreRightAnim = new Animation(
+      this.assetManager.getAsset("img/hero/Zerlin force jump right.png"),
+      0, 0, zc.Z_FORCE_JUMP_FRAME_WIDTH, zc.Z_FORCE_JUMP_FRAME_HEIGHT,
+      zc.Z_FORCE_JUMP_PRE_FRAME_SPEED, 5, false, false, zc.Z_FORCE_JUMP_ANIM_SCALE);
+    this.forceJumpPreRightAnim.freezeOnLastFrame = true;
+    this.forceJumpPreLeftAnim = new Animation(
+      this.assetManager.getAsset("img/hero/Zerlin force jump left.png"),
+      0, 0, zc.Z_FORCE_JUMP_FRAME_WIDTH, zc.Z_FORCE_JUMP_FRAME_HEIGHT,
+      zc.Z_FORCE_JUMP_PRE_FRAME_SPEED, 5, false, false, zc.Z_FORCE_JUMP_ANIM_SCALE);
+    this.forceJumpPreLeftAnim.freezeOnLastFrame = true;
+    this.forceJumpFinalRightAnim = new Animation(
+      this.assetManager.getAsset("img/hero/Zerlin force jump right.png"),
+      5 * zc.Z_FORCE_JUMP_FRAME_WIDTH, 0, zc.Z_FORCE_JUMP_FRAME_WIDTH, zc.Z_FORCE_JUMP_FRAME_HEIGHT,
+      zc.Z_FORCE_JUMP_FINAL_FRAME_SPEED, 5, false, false, zc.Z_FORCE_JUMP_ANIM_SCALE);
+    this.forceJumpFinalLeftAnim = new Animation(
+      this.assetManager.getAsset("img/hero/Zerlin force jump left.png"),
+      5 * zc.Z_FORCE_JUMP_FRAME_WIDTH, 0, zc.Z_FORCE_JUMP_FRAME_WIDTH, zc.Z_FORCE_JUMP_FRAME_HEIGHT,
+      zc.Z_FORCE_JUMP_FINAL_FRAME_SPEED, 5, false, false, zc.Z_FORCE_JUMP_ANIM_SCALE);
     this.fallingUpAnimation = new Animation(this.assetManager.getAsset("img/hero/Zerlin falling up.png"),
       0, 0,
       zc.Z_WIDTH,
@@ -972,7 +1048,7 @@ class Lightsaber extends Entity {
       this.ctx.save();
       this.ctx.translate(this.x - this.camera.x, this.y);
       this.ctx.rotate(this.angle + this.bounceOffset);
-      this.ctx.drawImage(this.game.getRecoloredSprite(this.image),
+      this.ctx.drawImage(this.game.getRecoloredSprite(this.image, this.Zerlin.saberHue),
         0,
         0,
         this.width,
@@ -1275,7 +1351,7 @@ class AirbornSaber extends Entity {
 
   draw() {
     var orig = this.animation.spriteSheet;
-    this.animation.spriteSheet = this.game.getRecoloredSprite(orig);
+    this.animation.spriteSheet = this.game.getRecoloredSprite(orig, this.arm.Zerlin.saberHue);
     this.animation.scale = this.arm.Zerlin.scale;
     this.animation.drawFrame(this.game.clockTick, this.game.ctx, this.x - this.width / 2 - this.camera.x, this.y - this.height / 2);
     this.animation.spriteSheet = orig;

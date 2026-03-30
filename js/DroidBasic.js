@@ -262,10 +262,17 @@ class SniperDroid extends BasicDroid {
   }
 
   shoot() {
+    var t = this.target;
+    var aim = predictInterceptTarget(
+      this.boundCircle.x, this.boundCircle.y,
+      t.x,
+      t.boundingbox.y + t.boundingbox.height / 2,
+      t.deltaX, t.deltaY,
+      dbc.SNIPER_DROID_LASER_SPEED
+    );
     let laser = new DroidLaser(this.game, this.boundCircle.x, this.boundCircle.y,
       dbc.SNIPER_DROID_LASER_SPEED,
-      this.target.x,
-      this.target.boundingbox.y + this.target.boundingbox.height / 2,
+      aim.x, aim.y,
       dbc.SNIPER_DROID_LASER_LENGTH, dbc.SNIPER_DROID_LASER_WIDTH, "#cccc00", "#ffff00");
     this.sceneManager.addLaser(laser);
     this.game.audio.playSoundFx(this.game.audio.enemy, 'bowcasterShoot');

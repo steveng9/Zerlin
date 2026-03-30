@@ -8,7 +8,15 @@ Joshua Atherton, Michael Josten, Steven Golob
 var gec = Constants.GameEngineConstants;
 
 // --- Saber sprite recoloring ---
-// Converts a pixel (RGB) to HSL (all values 0-1)
+// Recolors pixels that exactly match the saber's source color (#00ae69, hue ≈ 156°).
+// Only pixels within a tight hue band around that color are touched — everything
+// else (goggles, skin, clothing) is untouched regardless of animation.
+//
+// Slider value = target hue in degrees (0–360).
+// 156 = original saber green (#00ae69) — no visual change.
+// Images load as blob data-URLs (see Main.js XHR loader) so getImageData never
+// throws a CORS taint error.
+
 function rgbToHsl(r, g, b) {
   r /= 255; g /= 255; b /= 255;
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -38,45 +46,54 @@ function hslToRgb(h, s, l) {
   return [Math.round(hue2(h + 1/3) * 255), Math.round(hue2(h) * 255), Math.round(hue2(h - 1/3) * 255)];
 }
 
-// Returns an offscreen canvas with green pixels hue-shifted by hueShift degrees.
-// Skin tones (hue < 80°) are left untouched.
-// Falls back to a canvas hue-rotate filter if getImageData is blocked (file:// CORS taint).
-function recolorGreenPixels(img, hueShift) {
+// Known saber source colors — exact RGB values found across all sprite sheets.
+// Each entry: [R, G, B]. Target color preserves each shade's own S and L.
+const SABER_SOURCE_COLORS = [
+  [0, 174, 105],   // #00ae69 — most sprites
+  [19, 180, 116],  // #13b474 — force jump and somersault sprites
+];
+
+function recolorSaberPixels(img, targetHueDeg) {
   const c = document.createElement('canvas');
   c.width = img.naturalWidth || img.width;
   c.height = img.naturalHeight || img.height;
   const cx = c.getContext('2d');
+  // Precompute target RGB for each source shade, preserving its S and L.
+  const replacements = SABER_SOURCE_COLORS.map(([r, g, b]) => {
+    const [, s, l] = rgbToHsl(r, g, b);
+    const [tr, tg, tb] = hslToRgb(targetHueDeg / 360, s, l);
+    return [r, g, b, tr, tg, tb];
+  });
   try {
     cx.drawImage(img, 0, 0);
     const id = cx.getImageData(0, 0, c.width, c.height), d = id.data;
-    const shift = hueShift / 360;
     for (let i = 0; i < d.length; i += 4) {
-      if (d[i + 3] < 10) continue;
-      const [h, s, l] = rgbToHsl(d[i], d[i + 1], d[i + 2]);
-      if (s > 0.40 && h >= 90/360 && h <= 155/360) {
-        const [r, g, b] = hslToRgb((h + shift) % 1, s, l);
-        d[i] = r; d[i + 1] = g; d[i + 2] = b;
+      for (const [r, g, b, tr, tg, tb] of replacements) {
+        if (d[i] === r && d[i+1] === g && d[i+2] === b) {
+          d[i] = tr; d[i+1] = tg; d[i+2] = tb;
+          break;
+        }
       }
     }
     cx.putImageData(id, 0, 0);
   } catch (e) {
-    // file:// blocks getImageData — fall back to CSS filter on the offscreen canvas
-    cx.filter = 'hue-rotate(' + hueShift + 'deg)';
-    cx.drawImage(img, 0, 0);
+    return img;
   }
   return c;
 }
 
+// Slider value = target hue in degrees (0–360). 156 = original saber green.
 function hueLabel(deg) {
-  if (deg === 0)   return 'Green (original)';
-  if (deg < 60)    return 'Cyan-green';
-  if (deg < 100)   return 'Cyan';
-  if (deg < 150)   return 'Blue';
-  if (deg < 200)   return 'Indigo';
-  if (deg < 240)   return 'Purple';
-  if (deg < 290)   return 'Magenta';
-  if (deg < 330)   return 'Red';
-  return 'Orange';
+  if (deg >= 146 && deg <= 166) return 'Green (original)';
+  if (deg < 30 || deg >= 330)  return 'Red';
+  if (deg < 60)                 return 'Orange';
+  if (deg < 90)                 return 'Yellow';
+  if (deg < 146)                return 'Green';
+  if (deg < 200)                return 'Cyan';
+  if (deg < 255)                return 'Blue';
+  if (deg < 285)                return 'Indigo';
+  if (deg < 330)                return 'Purple';
+  return 'Red';
 }
 
 window.requestAnimFrame = (function() {
@@ -103,17 +120,19 @@ class GameEngine {
     };
     this.click = null;
     this.keys = {};
-    this.saberSpriteCache = new WeakMap(); // img → Map(hueShift → canvas)
+    this.saberSpriteCache = new WeakMap(); // img → Map(targetHueDeg → canvas)
   }
 
-  // Returns a cached recolored canvas for img at the current saberHue.
-  // If saberHue is 0 (original green), returns img unchanged.
-  getRecoloredSprite(img) {
-    if (!img || this.saberHue === 0) return img;
+  // Returns a cached recolored canvas for img at the given hue (target hue, 0–360°).
+  // 156 = original saber color (#00ae69) — returns the original image unchanged.
+  // Each character passes their own saberHue so P1 and P2 can have different colors.
+  getRecoloredSprite(img, hue) {
+    const ORIGINAL_HUE = 156;
+    if (!img || hue === ORIGINAL_HUE) return img;
     if (!this.saberSpriteCache.has(img)) this.saberSpriteCache.set(img, new Map());
     const hueMap = this.saberSpriteCache.get(img);
-    if (!hueMap.has(this.saberHue)) hueMap.set(this.saberHue, recolorGreenPixels(img, this.saberHue));
-    return hueMap.get(this.saberHue);
+    if (!hueMap.has(hue)) hueMap.set(hue, recolorSaberPixels(img, hue));
+    return hueMap.get(hue);
   }
 
   init(ctx) {
@@ -165,14 +184,24 @@ class GameEngine {
       this.sceneManager.trainingTargetDroids = count;
     });
 
-    this.saberHue = 120; // degrees of hue-rotate; 0 = original green, 120 = blue
+    this.saberHue = 240; // target hue in degrees; 156 = original green, 240 = blue
     var saberHueSlider = document.getElementById("saberHueSlider");
     saberHueSlider.addEventListener('input', () => {
       this.saberHue = parseInt(saberHueSlider.value);
       document.getElementById("saberHueVal").textContent = hueLabel(this.saberHue);
+      // Propagate to whoever's local character this player controls.
+      // In SP or as host: P1 (sm.Zerlin). As client: P2 (Zerlin2 in current scene).
+      var scene = this.sceneManager.currentScene;
+      if (scene && scene.multiplayerActive && !this.network.isHost && scene.Zerlin2) {
+        scene.Zerlin2.saberHue = this.saberHue;
+      } else {
+        this.sceneManager.Zerlin.saberHue = this.saberHue;
+      }
     });
     saberHueSlider.value = this.saberHue;
     document.getElementById("saberHueVal").textContent = hueLabel(this.saberHue);
+    // Apply default hue to P1's character now that init is complete
+    this.sceneManager.Zerlin.saberHue = this.saberHue;
 
     this.lightningHue = 240; // hue of lightning color; 240 = blue (default)
     var lightningHueSlider = document.getElementById("lightningHueSlider");

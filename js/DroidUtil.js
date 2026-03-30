@@ -95,6 +95,49 @@ class AbstractDroid extends Entity {
 
 
 
+/**
+ * Compute the predicted intercept point for a projectile fired at a moving target.
+ *
+ * Solves the quadratic: (vx²+vy²-s²)t² + 2(dx·vx+dy·vy)t + (dx²+dy²) = 0
+ * where dx/dy are the displacement from origin to target and s is projectile speed.
+ * Returns the predicted {x, y} world-space hit point, or the target's current
+ * position as a fallback if no forward-time solution exists.
+ *
+ * @param {number} ox  Projectile origin X (world-space)
+ * @param {number} oy  Projectile origin Y (world-space)
+ * @param {number} tx  Target current X (world-space)
+ * @param {number} ty  Target current Y (world-space)
+ * @param {number} vx  Target velocity X (px/s)
+ * @param {number} vy  Target velocity Y (px/s)
+ * @param {number} s   Projectile speed (px/s) — already includes any multipliers
+ * @returns {{x: number, y: number}}
+ */
+function predictInterceptTarget(ox, oy, tx, ty, vx, vy, s) {
+  var dx = tx - ox, dy = ty - oy;
+  var a  = vx * vx + vy * vy - s * s;
+  var b  = 2 * (dx * vx + dy * vy);
+  var c  = dx * dx + dy * dy;
+
+  var t = null;
+  if (Math.abs(a) < 0.001) {
+    // nearly linear (target speed ≈ laser speed — very rare)
+    if (Math.abs(b) > 0.001) t = -c / b;
+  } else {
+    var disc = b * b - 4 * a * c;
+    if (disc >= 0) {
+      var sqrtDisc = Math.sqrt(disc);
+      var t1 = (-b + sqrtDisc) / (2 * a);
+      var t2 = (-b - sqrtDisc) / (2 * a);
+      if (t1 > 0 && t2 > 0) t = Math.min(t1, t2);
+      else if (t1 > 0)       t = t1;
+      else if (t2 > 0)       t = t2;
+    }
+  }
+
+  if (t === null) return { x: tx, y: ty }; // no solution — aim at current position
+  return { x: tx + vx * t, y: ty + vy * t };
+}
+
 class DroidLaser extends Entity {
 	constructor(game, startX, startY, speed, targetX, targetY, length, width, color, deflectedColor) {
 		super(game, startX, startY, 0, 0);

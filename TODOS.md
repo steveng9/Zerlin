@@ -34,92 +34,40 @@ When falling from above a certain height threshold, landing triggers either:
 
 ---
 
-## Architecture Refactor
+## Architecture Refactor ✅ Completed 2026-03-28
 
-The high-level separation of concerns (SceneManager, CollisionManager, SoundEngine,
-Camera, NetworkManager, Animation) and the droid class hierarchy are solid foundations.
-The following four refactors are listed in priority order — each is independent and can
-be tackled one at a time without breaking the others.
+### A. Extract scenes out of SceneManager ✅
 
-### A. Extract scenes out of SceneManager (highest priority)
+SceneManager reduced from ~1951 lines to ~454. Function-pointer swapping removed.
+Six scene classes extracted to `js/scenes/`:
+- `OpeningScene`, `LevelTransitionScene`, `CollectionScene`, `CreditsScene`
+- `LevelScene`, `TrainingGroundScene`
 
-**Problem:** SceneManager is a ~1600-line god class. It owns entity arrays, spawn pools,
-per-scene update/draw logic, camera shake state, training HUD rendering, the control
-scheme overlay, powerup respawn queues, and multiplayer networking callbacks — all mixed
-together. Each "scene" is currently a 200–300 line blob living inside one giant class,
-connected by swapping `this.update` / `this.draw` function pointers at runtime.
+UI entity classes (`PauseScreen`, `TextScreen`, `Overlay`, `AttributeCollectionScreen`)
+extracted to `js/SceneEntities.js`. SceneManager is now a thin router — `update()` and
+`draw()` delegate to `this.currentScene`. Scene classes receive `sm` (SceneManager) in
+their constructor and access shared state via `this.sm.xxx`.
 
-**Fix:** Give each scene its own class:
-- `OpeningScene`
-- `LevelScene`
-- `TrainingGroundScene`
-- `CreditsScene`
+### B. Extract snapshot logic into TrainingGroundScene ✅ (partial)
 
-Each scene class owns its own entity arrays (`droids`, `lasers`, `powerups`, etc.),
-spawn logic, camera shake state, and update/draw methods. SceneManager becomes a thin
-router: it holds a `currentScene` reference and delegates `update()` and `draw()` to it.
-Transitions (`startLevelScene()`, `startTrainingGroundScene()`, etc.) become factory
-methods that construct and activate the appropriate scene object.
+All multiplayer serialize/deserialize methods (`_buildPlayerSnapshot`, `_serializePlayer`,
+`_serializeDroid`, `_serializeLaser`, `_applyPlayerFromSnapshot`, `_applyEntitySnapshot`,
+`_getGhostDroidFromPool`, `_createTrainingPowerup`) moved out of SceneManager and into
+`TrainingGroundScene` where they belong. A dedicated `SnapshotManager.js` class is a
+possible future step if this logic grows further.
 
-**Benefit:** Each scene is self-contained and testable. Adding a new scene or game mode
-no longer requires touching a monolithic file. The multiplayer training ground could even
-be a subclass of `TrainingGroundScene` rather than a mode flag mixed into update logic.
+### C. Separate Level entity-spawning into LevelLoader ✅
 
----
+`LevelLoader.js` created as a static factory — parses layout strings and constructs
+`BasicDroid`, `HealthPowerUp`, `Tile`, etc. instances, returning them to the caller.
+`Level.set()` is now a 6-line wrapper around `LevelLoader.load()`. The old inline
+`_parseTiles()` method (75+ lines) removed entirely.
 
-### B. Extract a SnapshotManager for multiplayer sync
+### D. Formalize the ghost pattern ✅
 
-**Problem:** The snapshot serialize/deserialize/reconcile logic (~250 lines:
-`_buildPlayerSnapshot`, `_serializePlayer`, `_serializeDroid`, `_serializeLaser`,
-`_applyPlayerFromSnapshot`, `_applyEntitySnapshot`, `_getGhostDroidFromPool`,
-`_createTrainingPowerup`) lives inside SceneManager but has nothing to do with scene
-management. It will grow as more entity types are synced.
-
-**Fix:** Extract a `SnapshotManager` class (or fold it into `NetworkManager` as a
-serialization layer). It receives references to the entity arrays and player objects it
-needs, and exposes two methods: `buildSnapshot()` and `applySnapshot(snap)`. SceneManager
-just calls those two methods — it doesn't know the format.
-
-**Benefit:** Multiplayer sync logic is isolated, easier to unit-test, and won't bloat
-scene classes as the protocol evolves.
-
----
-
-### C. Separate Level data from Level entity-spawning
-
-**Problem:** `Level.js` conflates two responsibilities: (1) defining the level layout
-as a 2D character grid with tile/background configs, and (2) instantiating concrete game
-entities (droids, powerups, tiles) from that grid via `level.set()`. This means adding a
-new level requires wiring entity constructors directly into the layout parser, and calling
-`level.set()` has the side effect of constructing live game objects.
-
-**Fix:** Split into:
-- `LevelDefinition` (pure data: layout string, tile image paths, background layers,
-  droid/powerup spawn specs) — no game object imports, easily serializable
-- `LevelLoader` (factory: reads a `LevelDefinition` and constructs the actual
-  `BasicDroid`, `HealthPowerUp`, `Tile`, etc. instances, returning them to the caller)
-
-**Benefit:** Level definitions become portable data. New levels can be added without
-touching entity construction code. `level.set()` side effects become explicit factory
-calls.
-
----
-
-### D. Formalize the ghost pattern for multiplayer entities
-
-**Problem:** Ghost mode (suppressing simulation on client-side remote entities) is
-currently implemented by duck-typing `entity.ghost = true` at runtime and adding `if
-(this.ghost) { ... return; }` guards individually in `BasicDroid.update()`,
-`DroidLaser.update()`, and `HomingLaser.update()`. As more entity types get synced, each
-one needs its own guard manually added and there is no enforced contract.
-
-**Fix:** Add a `ghost` property and dead-reckoning `ghostUpdate()` method to the
-`AbstractDroid` and `DroidLaser` base classes, and have each `update()` call
-`ghostUpdate()` and return early when `this.ghost` is true. Alternatively, a lightweight
-`GhostEntity` mixin/wrapper that intercepts `update()` and replaces it with pure
-dead-reckoning movement. Either way, the pattern becomes a single well-defined place
-rather than repeated guards.
-
-**Benefit:** Adding a new synced entity type (e.g. boss, moving platform) automatically
-gets correct ghost behavior without copy-pasting guard logic. The contract is visible and
-enforced at the base class level.
+`ghostUpdate()` added to `AbstractDroid` and `DroidLaser` base classes with the correct
+dead-reckoning logic. Each subclass `update()` now just needs:
+```js
+if (this.ghost) { super.update(); return; }
+```
+`BasicDroid` simplified from an 8-line inline dead-reckoning block to a one-liner.

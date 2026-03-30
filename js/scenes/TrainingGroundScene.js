@@ -67,6 +67,8 @@ class TrainingGroundScene {
 
       // Apply infinite health toggle to P2 as well
       this.Zerlin2.infiniteHealth = sm.infiniteHealth;
+      // P2 saber color defaults to the client's game.saberHue (updated via input after connect)
+      this.Zerlin2.saberHue = this.game.saberHue || 240;
 
       // P2 status bars — mirrored to top-right
       var barLength = this.game.surfaceWidth * Constants.StatusBarConstants.STATUS_BAR_LENGTH;
@@ -127,7 +129,18 @@ class TrainingGroundScene {
             this.sm.Zerlin.slashingLeftAnimation.elapsedTime = s.slashLeftElapsedTime;
           if (s.somersaultElapsedTime !== undefined && this.sm.Zerlin.somersaultingAnimation)
             this.sm.Zerlin.somersaultingAnimation.elapsedTime = s.somersaultElapsedTime;
-          this.sm.Zerlin.forceJumping           = s.forceJumping            || false;
+          this.sm.Zerlin.forceJumping        = s.forceJumping     || false;
+          this.sm.Zerlin.forceJumpFinalAnim  = s.forceJumpFinalAnim || false;
+          this.sm.Zerlin.forceJumpCharging   = s.forceJumpCharging  || false;
+          this.sm.Zerlin.forceJumpChargeTimer = s.forceJumpChargeTimer || 0;
+          if (this.sm.Zerlin.forceJumpPreRightAnim && s.forceJumpPreAnimElapsed !== undefined) {
+            this.sm.Zerlin.forceJumpPreRightAnim.elapsedTime  = s.forceJumpPreAnimElapsed;
+            this.sm.Zerlin.forceJumpPreLeftAnim.elapsedTime   = s.forceJumpPreAnimElapsed;
+          }
+          if (this.sm.Zerlin.forceJumpFinalRightAnim && s.forceJumpFinalAnimElapsed !== undefined) {
+            this.sm.Zerlin.forceJumpFinalRightAnim.elapsedTime = s.forceJumpFinalAnimElapsed;
+            this.sm.Zerlin.forceJumpFinalLeftAnim.elapsedTime  = s.forceJumpFinalAnimElapsed;
+          }
           this.sm.Zerlin.crouching              = s.crouching               || false;
           if (this.sm.Zerlin.lightsaber) {
             var ls = this.sm.Zerlin.lightsaber;
@@ -187,7 +200,14 @@ class TrainingGroundScene {
         this.pendingSnapshot = null;
       }
 
-      if (this.multiplayerActive && this.Zerlin2) this.Zerlin2.update();
+      if (this.multiplayerActive && this.Zerlin2) {
+        this.Zerlin2.update();
+        // Host: apply client's chosen saber color to Zerlin2
+        var inp = this.game.network.lastReceivedInput;
+        if (this.game.network.isHost && inp && inp.saberHue !== undefined) {
+          this.Zerlin2.saberHue = inp.saberHue;
+        }
+      }
       this.sm.camera.update();
       this.sm.level.update();
 
@@ -305,6 +325,7 @@ class TrainingGroundScene {
             mouseY:         this.game.mouse ? this.game.mouse.y : 0,
             click:          !!this.game.click,
             rightClickDown: this.game.rightClickDown || false,
+            saberHue:       this.Zerlin2 ? this.Zerlin2.saberHue : this.game.saberHue,
           });
         }
       }
@@ -509,7 +530,12 @@ class TrainingGroundScene {
       slashElapsedTime:       z.slashingAnimation     ? z.slashingAnimation.elapsedTime     : 0,
       slashLeftElapsedTime:   z.slashingLeftAnimation ? z.slashingLeftAnimation.elapsedTime : 0,
       somersaultElapsedTime:  z.somersaultingAnimation ? z.somersaultingAnimation.elapsedTime : 0,
-      forceJumping:           z.forceJumping,
+      forceJumping:            z.forceJumping,
+      forceJumpFinalAnim:      z.forceJumpFinalAnim      || false,
+      forceJumpCharging:       z.forceJumpCharging       || false,
+      forceJumpChargeTimer:    z.forceJumpChargeTimer     || 0,
+      forceJumpPreAnimElapsed: z.forceJumpPreRightAnim   ? z.forceJumpPreRightAnim.elapsedTime   : 0,
+      forceJumpFinalAnimElapsed: z.forceJumpFinalRightAnim ? z.forceJumpFinalRightAnim.elapsedTime : 0,
       crouching:              z.crouching,
       armSpriteKey:     z.lightsaber ? z.lightsaber.armSpriteKey : 'rightUp',
       saberAngle:       z.lightsaber ? z.lightsaber.angle       : 0,
@@ -525,6 +551,7 @@ class TrainingGroundScene {
       lightningStartY:  z.lightsaber ? (z.lightsaber.lastLightningStartY || 0) : 0,
       lightningAngle:   z.lightsaber ? (z.lightsaber.lastLightningAngle  || 0) : 0,
       reviveProgress:   z.reviveProgress || 0,
+      saberHue:         z.saberHue !== undefined ? z.saberHue : 240,
     };
   }
 
@@ -666,6 +693,7 @@ class TrainingGroundScene {
       zerlin.lightsaber.updateCollisionLine();
     }
     if (state.reviveProgress !== undefined) zerlin.reviveProgress = state.reviveProgress;
+    if (state.saberHue !== undefined) zerlin.saberHue = state.saberHue;
     if (state.alive && !zerlin.alive) zerlin.revive(state.health);
     if (state.facingRight !== zerlin.facingRight) {
       state.facingRight ? zerlin.faceRight() : zerlin.faceLeft();

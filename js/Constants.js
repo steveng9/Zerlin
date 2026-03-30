@@ -91,7 +91,7 @@ Constants = {
     //PHI : 1.618,
 
     /* Zerlin health and force stats*/
-    Z_MAX_HEALTH: 10, //was 20
+    Z_MAX_HEALTH: 20, //was 20
     Z_MAX_FORCE: 15,
     Z_FORCE_REGEN_PER_SECOND: 1/7,
     Z_FORCE_JUMP_FORCE_COST: 3,
@@ -131,6 +131,18 @@ Constants = {
     Z_JUMP_ARM_SOCKET_X: 33, // pixel column of the arm socket within jump.png
     Z_JUMP_SCALE_FACTOR: 1.5, // jump sprite has smaller pixel art; enlarge to match Zerlin's normal size
 
+    // Force jump ascent animation (new 10-frame sprites, 432×288 per frame)
+    Z_FORCE_JUMP_FRAME_WIDTH: 432,
+    Z_FORCE_JUMP_FRAME_HEIGHT: 288,
+    Z_FORCE_JUMP_ANIM_SCALE: 0.54,      // absolute scale (slightly smaller than body — artist imported at large res)
+    Z_FORCE_JUMP_ANCHOR_RIGHT: 196,     // frame-pixel X that aligns with Zerlin's body center, right-facing
+    Z_FORCE_JUMP_ANCHOR_LEFT: 233,      // same for left-facing
+    Z_FORCE_JUMP_PRE_FRAME_SPEED: 0.05, // s/frame for frames 0–4 (matches final-anim speed — consistent throughout)
+    Z_FORCE_JUMP_FINAL_FRAME_SPEED: 0.05, // s/frame for frames 5–9 (draw out saber)
+    FORCE_JUMP_CHARGE_DELAY: 0.05,      // seconds Zerlin squats on ground before launching
+    FORCE_JUMP_ANIM_FINAL_THRESHOLD: -250, // start final frames when deltaY rises above this;
+                                           // 5 frames × 0.05 s × 1000 px/s² = 250 → completes at −150 (REIGNITE)
+
     Z_SOMERSAULT_WIDTH: 462,
     Z_SOMERSAULT_HEIGHT: 306,
     Z_SOMERSAULT_FRAME_SPEED: .1,
@@ -158,7 +170,7 @@ Constants = {
     Z_WALKING_SPEED: 200,
     Z_SOMERSAULT_SPEED: 400,
     FORCE_JUMP_DELTA_Y: -950,
-    FORCE_JUMP_REIGNITE_THRESHOLD: -150, // re-ignite saber when deltaY rises above this (~150ms before jump peak)
+    FORCE_JUMP_REIGNITE_THRESHOLD: 0, // re-ignite saber when deltaY rises above this (~150ms before jump peak)
     JUMP_DELTA_Y: -600,
     GRAVITATIONAL_ACCELERATION: 1000,
 
@@ -290,12 +302,12 @@ Michael Josten`,
     TRAINING_DEFAULT_LASER_MULT: 2,
 
     // Set each to true/false to control which droid types are enabled on first load
-    TRAINING_DEFAULT_BASIC:      false,
-    TRAINING_DEFAULT_SCATTER:    false,
-    TRAINING_DEFAULT_SLOW_BURST: false,
+    TRAINING_DEFAULT_BASIC:      true,
+    TRAINING_DEFAULT_SCATTER:    true,
+    TRAINING_DEFAULT_SLOW_BURST: true,
     TRAINING_DEFAULT_FAST_BURST: true,
     TRAINING_DEFAULT_SNIPER:     true,
-    TRAINING_DEFAULT_MULTISHOT:  false,
+    TRAINING_DEFAULT_MULTISHOT:  true,
 
     // Seconds after a powerup token is grabbed before it respawns at its home position
     POWERUP_RESPAWN_DELAY: 60,

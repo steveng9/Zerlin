@@ -34,22 +34,12 @@ class AssetManager {
           that.errorCount++;
           if (that.isDone()) callback();
         });
-        // Load as blob then convert to data-URL so canvas.getImageData is never
-        // blocked by the browser's cross-origin taint rule (affects file:// protocol).
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', path, true);
-        xhr.responseType = 'blob';
-        xhr.onload = function() {
-          if (this.status === 200 || this.status === 0) { // status 0 = file://
-            var reader = new FileReader();
-            reader.onloadend = function() { img.src = reader.result; };
-            reader.readAsDataURL(xhr.response);
-          } else {
-            img.src = path; // fallback
-          }
-        };
-        xhr.onerror = function() { img.src = path; };
-        xhr.send();
+        // fetch() → createObjectURL produces a blob: URL that is always same-origin,
+        // so canvas.getImageData is never blocked (works on both file:// and HTTP).
+        fetch(path)
+          .then(function(r) { return r.blob(); })
+          .then(function(blob) { img.src = URL.createObjectURL(blob); })
+          .catch(function() { img.src = path; }); // last resort (may taint canvas)
         that.cache[path] = img;
       })(this, this.downloadQueue[i]);
     }
@@ -93,6 +83,8 @@ class AssetManager {
   AM.queueDownload("img/hero/throwing arm.png");
   AM.queueDownload("img/hero/throwing arm left.png");
   AM.queueDownload("img/hero/airborn saber.png");
+  AM.queueDownload("img/hero/Zerlin force jump right.png");
+  AM.queueDownload("img/hero/Zerlin force jump left.png");
 
 
 
@@ -243,6 +235,7 @@ class AssetManager {
     console.log('all files loaded');
 
     var gameEngine = new GameEngine(AM);
+    window.game = gameEngine; // expose globally for console diagnostics
     gameEngine.init(ctx);
 
     gameEngine.start();
