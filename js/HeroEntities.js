@@ -47,6 +47,7 @@ class Zerlin extends Entity {
     this.slashingDirection = 0;
     this.slashZone = {};  // must exist before startSlash() to avoid crash on P2's machine
     this.armSocketY = zc.Z_ARM_SOCKET_Y;
+    this.lastBottom = -9999; // initialize so first-frame landing check always passes
     this.faceRight();
 
     /* Zerlin Status' */

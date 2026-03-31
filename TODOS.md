@@ -32,6 +32,54 @@ When falling from above a certain height threshold, landing triggers either:
 - A planting/absorb animation (hard stop, knees bent)
 - An impact-absorbing somersault (rolling recovery)
 
+
+## 9. make 2-player fun and objective-driven. For example, implement keeping      
+score of each player's kill count, and having there be some kind of prize for  
+winning. Or build a simple co-op campaign, where the players have to work      
+together to get through the levels.                                            
+
+
+## 10. Add a feature where Zerlin can latch onto a driod (i.e. jump to it, then    
+catch it) and then float around, dangling off the droid, and being able to     
+control the droid's shooting, while hanging. When Zerlin catches the droid,    
+the droid's flight path should dip a little from the sudden increase in        
+weight, then rise back up. When the dip happens it should kindof follow the    
+path of Zerlin in a way that makes sense; I mean, if Z catches the droid on    
+his jump, but is in the ascent stage of his jump, then the droid's path should 
+ react upward, not dip, to properly absorb both Z's momentum, and also dip     
+after, absorbing Z's added weight.  
+
+
+## 11. add power move where Z can do some cool spin / saber twirl 
+and deflect all incoming lasers for a brief moment
+
+## 12. some sort of force pull / push / manipulate to do something cool
+
+## 13. add front-to-back cars flying cars to coruscant scene
+
+## 14. add blood when laser hits Z (like how the sparks fly when they hit the saber)
+
+## 15. Change movements of some of the Droids so that they don't fly within range of Z's lightsaber slash / throw. So Z is required to deflect lasers at it to destroy it.
+
+## 
+
+
+
+
+
+
+---
+
+
+## Bugs:
+
+- lightening and other artifacts freeze when Zerlin dies (during death animation). Should be just removed, or fade out as normal.
+- somersault makes Z not begin falling, if somersault off of platform, until done with animation. Z should begin falling immediately.
+- upper tile platform surface bleeds through tile face
+- some animations with the saber conflict when the saber is doing something different
+- make smaller Z's damge box (don't include his feet)
+- when z dies, and falls over, if he's on a platform, he might be laying in the air off the edge of the platform. Instead, have him fall to floor, or where there is not floating
+
 ---
 
 ## Architecture Refactor ✅ Completed 2026-03-28

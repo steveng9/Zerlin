@@ -301,8 +301,28 @@ class CollisionManager {
       var z2 = this.sceneManager.Zerlin2;
       if (z2.y > 2 * this.sceneManager.camera.height) {
         if (z2.alive) {
-          z2.setXY(this.sceneManager.checkPoint.boundingBox.x + 250, 0);
-          z2.deltaY = 0;
+          var respawnX = this.sceneManager.checkPoint.boundingBox.x + 250;
+          var floorTile = null;
+          var tiles = this.sceneManager.level.tiles;
+          for (var _i = 0; _i < tiles.length; _i++) {
+            var _t = tiles[_i];
+            if (_t.rowIndex !== undefined && _t.rowIndex === _t.totalRows - 1 &&
+                _t.boundingBox.left <= respawnX && _t.boundingBox.right >= respawnX) {
+              floorTile = _t;
+              break;
+            }
+          }
+          if (floorTile) {
+            var landY = floorTile.boundingBox.top + zConst.Z_FEET_ABOVE_FRAME * zConst.Z_SCALE;
+            z2.setXY(respawnX, landY);
+            z2.deltaY = 0;
+            z2.falling = false;
+            z2.tile = floorTile;
+            z2.lastBottom = z2.boundingbox.bottom;
+          } else {
+            z2.setXY(respawnX, 0);
+            z2.deltaY = 0;
+          }
         }
       } else if (z2.x < cm.EDGE_OF_MAP_BUFFER) {
         z2.setXY(cm.EDGE_OF_MAP_BUFFER, z2.y);

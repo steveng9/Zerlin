@@ -71,6 +71,9 @@ class TrainingGroundScene {
       // P2 saber color defaults to the client's game.saberHue (updated via input after connect)
       this.Zerlin2.saberHue = this.game.saberHue || 240;
 
+      // Spawn P2 on the floor immediately instead of falling from y=0
+      this._snapToFloor(this.Zerlin2, sm.level.tiles);
+
       // P2 status bars — mirrored to top-right
       var barLength = this.game.surfaceWidth * Constants.StatusBarConstants.STATUS_BAR_LENGTH;
       var p2BarX = this.game.surfaceWidth - barLength - 25;
@@ -720,6 +723,26 @@ class TrainingGroundScene {
     var idx = this.trainingDroidPool.findIndex(d => d.constructor.name === type);
     if (idx === -1) return null;
     return this.trainingDroidPool.splice(idx, 1)[0];
+  }
+
+  /**
+   * Snap a Zerlin to the top of the nearest floor tile at their x position.
+   * Used to place P2 on the ground instead of falling from y=0.
+   */
+  _snapToFloor(zerlin, tiles) {
+    var zc = Constants.ZerlinConstants;
+    for (var i = 0; i < tiles.length; i++) {
+      var t = tiles[i];
+      if (t.rowIndex !== undefined && t.rowIndex === t.totalRows - 1 &&
+          t.boundingBox.left <= zerlin.x && t.boundingBox.right >= zerlin.x) {
+        zerlin.y = t.boundingBox.top + zc.Z_FEET_ABOVE_FRAME * zc.Z_SCALE;
+        zerlin.updateBoundingBox();
+        zerlin.falling = false;
+        zerlin.tile = t;
+        zerlin.lastBottom = zerlin.boundingbox.bottom;
+        return;
+      }
+    }
   }
 
   /**
