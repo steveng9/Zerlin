@@ -156,6 +156,7 @@ class LevelScene {
   draw() {
     this.sm.camera.draw();
     this.sm.level.draw();
+    this.sm.level.drawEntityShadows([this.sm.Zerlin], this.sm.droids);
     this.sm.Zerlin.draw();
     for (var i = 0; i < this.sm.droids.length; i++) {
       this.sm.droids[i].draw();

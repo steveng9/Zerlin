@@ -92,7 +92,8 @@ class SceneManager2 {
       centerTile: 'img/levels/dagobah/forest_center_tile.png',
       leftTile: 'img/levels/dagobah/forest_left_tile.png',
       rightTile: 'img/levels/dagobah/forest_right_tile.png',
-      leftRightTile: 'img/levels/dagobah/forest_both_rounded_tile.png'
+      leftRightTile: 'img/levels/dagobah/forest_both_rounded_tile.png',
+      surfaceColor: { r: 105, g: 135, b: 55 }  // swampy brownish-green
     };
 
     var CITY_LEVEL_BACKGROUNDS = [
@@ -114,7 +115,8 @@ class SceneManager2 {
       centerTile: 'img/levels/coruscant/city_tile_center.png',
       leftTile: 'img/levels/coruscant/city_tile_left.png',
       rightTile: 'img/levels/coruscant/city_tile_right.png',
-      leftRightTile: 'img/levels/coruscant/city_tile_left_right.png'
+      leftRightTile: 'img/levels/coruscant/city_tile_left_right.png',
+      surfaceColor: { r: 195, g: 200, b: 210 }  // urban concrete grey
     };
 
     var LEVEL_THREE_BACKGROUNDS = [
@@ -143,7 +145,8 @@ class SceneManager2 {
       centerTile: 'img/levels/hoth/ice_tile_center.png',
       leftTile: 'img/levels/hoth/ice_tile_left.png',
       rightTile: 'img/levels/hoth/ice_tile_right.png',
-      leftRightTile: 'img/levels/hoth/ice_tile_left_right.png'
+      leftRightTile: 'img/levels/hoth/ice_tile_left_right.png',
+      surfaceColor: { r: 175, g: 220, b: 245 }  // pale icy blue
     };
 
     this.levels = [];

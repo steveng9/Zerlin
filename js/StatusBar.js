@@ -228,13 +228,13 @@ class ForceStatusBar extends AbstractStatusBar {
 
 // ── Player 2 status bars ──────────────────────────────────────────────────────
 class HealthStatusBarP2 extends HealthStatusBar {
-  setCurrent() { this.current = this.sceneManager.Zerlin2.currentHealth; }
-  setMaxSize() { this.maxSize = this.sceneManager.Zerlin2.maxHealth; }
+  setCurrent() { if (this.sceneManager.Zerlin2) this.current = this.sceneManager.Zerlin2.currentHealth; }
+  setMaxSize() { if (this.sceneManager.Zerlin2) this.maxSize = this.sceneManager.Zerlin2.maxHealth; }
 }
 
 class ForceStatusBarP2 extends ForceStatusBar {
-  setCurrent() { this.current = this.sceneManager.Zerlin2.currentForce; }
-  setMaxSize() { this.maxSize = this.sceneManager.Zerlin2.maxForce; }
+  setCurrent() { if (this.sceneManager.Zerlin2) this.current = this.sceneManager.Zerlin2.currentForce; }
+  setMaxSize() { if (this.sceneManager.Zerlin2) this.maxSize = this.sceneManager.Zerlin2.maxForce; }
 }
 
 class BossHealthStatusBar extends AbstractStatusBar {

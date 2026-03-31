@@ -306,6 +306,17 @@ class Zerlin extends Entity {
         this.die();
       }
     } else { // dead
+      if (!this.deathLanded) {
+        if (!this.falling) {
+          // Body landed — start death animation from here
+          this.deathLanded = true;
+          this.timeOfDeath = this.game.sceneManager.currentScene.levelSceneTimer;
+        } else if (this.y > this.game.surfaceHeight * 1.5) {
+          // Fell off screen — trigger game over anyway
+          this.deathLanded = true;
+          this.timeOfDeath = this.game.sceneManager.currentScene.levelSceneTimer;
+        }
+      }
       if (this.falling) {
         this.lastBottom = this.boundingbox.bottom;
         this.deltaY += zc.GRAVITATIONAL_ACCELERATION * this.game.clockTick;
@@ -422,11 +433,13 @@ class Zerlin extends Entity {
     // saber-colored pixels so the recolor is a no-op for them.
     var _origSheet = this.animation.spriteSheet;
     this.animation.spriteSheet = this.game.getRecoloredSprite(_origSheet, this.saberHue);
+    // Freeze death animation until body has landed on a platform
+    var animTick = (!this.alive && !this.deathLanded) ? 0 : this.game.clockTick;
     if (usingForceJumpAnim) {
       // elapsed time is managed in update(); pass 0 to avoid double-advancing
       this.animation.drawFrame(0, this.ctx, this.drawX - this.camera.x, this.y - this.animation.frameHeight * activeScale);
     } else {
-      this.animation.drawFrame(this.game.clockTick, this.ctx, this.drawX - this.camera.x, this.y - this.animation.frameHeight * activeScale);
+      this.animation.drawFrame(animTick, this.ctx, this.drawX - this.camera.x, this.y - this.animation.frameHeight * activeScale);
     }
     this.animation.spriteSheet = _origSheet;
     this.lightsaber.draw();
@@ -477,13 +490,18 @@ class Zerlin extends Entity {
 
   die() {
     this.alive = false;
-    this.timeOfDeath = this.game.sceneManager.currentScene.levelSceneTimer;
     this.lightsaber.hidden = true;
     if (this.lightsaber.throwing) {
       this.lightsaber.catch();
     }
     this.boundingbox = new BoundingBox(this.x + 90 * this.scale, this.y - 120 * this.scale, 50 * this.scale, 108 * this.scale);
     this.boundingbox.hidden = true;
+    // Body falls to platform before animation plays
+    this.deathLanded = false;
+    this.falling = true;
+    this.tile = null;
+    this.deltaX = 0;
+    this.deltaY = Math.max(0, this.deltaY);
   }
 
   revive(health) {

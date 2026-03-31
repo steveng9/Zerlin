@@ -61,6 +61,7 @@ class TrainingGroundScene {
 
     if (multiplayer) {
       this.Zerlin2 = new Zerlin2(this.game, sm.camera, sm);
+      sm.Zerlin2 = this.Zerlin2;
       this.Zerlin2.maxHealth = 15;
       this.Zerlin2.maxForce  = 15;
       this.Zerlin2.setHealth();
@@ -373,6 +374,9 @@ class TrainingGroundScene {
 
     this.sm.camera.draw();
     this.sm.level.draw();
+    var _shadowPlayers = [this.sm.Zerlin];
+    if (this.multiplayerActive && this.Zerlin2) _shadowPlayers.push(this.Zerlin2);
+    this.sm.level.drawEntityShadows(_shadowPlayers, this.sm.droids);
     this.sm.Zerlin.draw();
     if (this.multiplayerActive && this.Zerlin2) this.Zerlin2.draw();
     for (var i = 0; i < this.sm.droids.length; i++) {

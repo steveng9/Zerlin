@@ -427,6 +427,12 @@ Michael Josten`,
     MAX_GOD_LIGHT_OPACITY: .45,
     GOD_LIGHT_INTERVAL: 16,
     HIGHWAY_SPEED: 1000,
+    TILE_DEPTH_FACTOR: 0.08,      // fraction of dist-from-vanishY → strip pixel height
+    TILE_SURFACE_DIST: 110,       // parallax distance of tile top-surface back edge (D > 100 = behind tile face)
+    FLOOR_BACK_OVERSHOOT: 40,     // px the floor back-edge rises above the tile's top
+    FLOOR_BACK_DIST: 110,         // parallax distance of floor surface back edge
+    FLOOR_FRONT_DIST: 80,         // parallax distance of floor surface front edge (D < 100 = closer than tiles)
+    SHADOW_RY_SCALE: 0.02,        // shadow ellipse ry = |tile.y - vanishY| * this (0 at centre, ~7 at floor)
 
     /*
     Assets:

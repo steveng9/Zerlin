@@ -55,10 +55,14 @@ class LevelLoader {
           } else if (layout[i][j + 1] !== '-') {
             image = level.tileImages.rightTile;
           }
-          tiles.push(new Tile(level, image, j * level.tileWidth, i * camera.height / rows));
+          var t = new Tile(level, image, j * level.tileWidth, i * camera.height / rows);
+          t.rowIndex = i; t.totalRows = rows;
+          tiles.push(t);
 
         } else if (ch === '~') {
-          tiles.push(new FallingTile(level, level.tileImages.leftRightTile, j * level.tileWidth, i * camera.height / rows));
+          var ft = new FallingTile(level, level.tileImages.leftRightTile, j * level.tileWidth, i * camera.height / rows);
+          ft.rowIndex = i; ft.totalRows = rows;
+          tiles.push(ft);
 
         } else if (ch === '=') {
           var image2 = level.tileImages.centerTile;
@@ -69,7 +73,9 @@ class LevelLoader {
           } else if (layout[i][j + 1] !== '=') {
             image2 = level.tileImages.rightTile;
           }
-          tiles.push(new MovingTile(level, image2, j * level.tileWidth, i * camera.height / rows, lc.TILE_INITIAL_VELOCITY, 0, lc.TILE_ACCELERATION));
+          var mt = new MovingTile(level, image2, j * level.tileWidth, i * camera.height / rows, lc.TILE_INITIAL_VELOCITY, 0, lc.TILE_ACCELERATION);
+          mt.rowIndex = i; mt.totalRows = rows;
+          tiles.push(mt);
 
         } else if (ch === 'd') {
           unspawnedDroids.push(new BasicDroid(game, game.assetManager.getAsset("img/enemies/droid-j-row.png"), j * level.tileWidth, i * rowHeight, 14, .2, 100, 100, Constants.DroidBasicConstants.BASIC_DROID_SCALE, 45));
