@@ -118,13 +118,24 @@ class Level {
     this.parralaxBackgroundLayers.forEach(layer => {
       layer.draw();
     });
-    // Pass 1: draw all top surfaces first so no surface bleeds over a later tile's face.
+
+    // Surface culling margin: the back edge of a surface is projected toward
+    // the vanishing point, so a tile just off either side of the camera can
+    // still have its surface back edge visible on screen.  The exact threshold:
+    //   margin = (camera.width / 2) * (D - 100) / 100
+    // We expand the isInView check symmetrically by passing a synthetic entity
+    // shifted left by the margin and a width padded by 2*margin, which expands
+    // both the left and right boundary checks by exactly the margin.
+    var maxD = Math.max(lc.TILE_SURFACE_DIST, lc.FLOOR_BACK_DIST);
+    var surfaceMargin = (this.camera.width / 2) * (maxD - 100) / 100;
+
+    // Pass 1: draw all surfaces with expanded culling.
     this.tiles.forEach(function(tile) {
-      if (that.camera.isInView(tile, tile.width, tile.height)) {
+      if (that.camera.isInView({x: tile.x - surfaceMargin, y: tile.y}, tile.width + surfaceMargin * 2, tile.height)) {
         tile.drawSurface();
       }
     });
-    // Pass 2: draw all tile faces on top of every surface.
+    // Pass 2: draw all tile faces with normal culling.
     this.tiles.forEach(function(tile) {
       if (that.camera.isInView(tile, tile.width, tile.height)) {
         tile.drawFace();
