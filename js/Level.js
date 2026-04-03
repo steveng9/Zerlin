@@ -118,9 +118,16 @@ class Level {
     this.parralaxBackgroundLayers.forEach(layer => {
       layer.draw();
     });
+    // Pass 1: draw all top surfaces first so no surface bleeds over a later tile's face.
     this.tiles.forEach(function(tile) {
       if (that.camera.isInView(tile, tile.width, tile.height)) {
-        tile.draw();
+        tile.drawSurface();
+      }
+    });
+    // Pass 2: draw all tile faces on top of every surface.
+    this.tiles.forEach(function(tile) {
+      if (that.camera.isInView(tile, tile.width, tile.height)) {
+        tile.drawFace();
       }
     });
   }
@@ -227,26 +234,31 @@ class Tile extends Entity {
   update() {
 
   }
-  draw() {
+  drawSurface() {
     var screenX = this.x - this.camera.x;
     var isFloor = this.rowIndex !== undefined && (this.rowIndex === this.totalRows - 1);
-
     if (isFloor) {
       this._drawFloorSurface(screenX);
-      // Floor front face is hidden below camera sightline — no tile image drawn.
-    } else {
-      // Top surface strip drawn first, behind the front face.
-      if (this.rowIndex !== undefined) {
-        this._drawTopStrip(screenX);
-      }
-      // Front face (facade): tile image drawn on top of the strip.
+    } else if (this.rowIndex !== undefined) {
+      this._drawTopStrip(screenX);
+    }
+  }
+
+  drawFace() {
+    var screenX = this.x - this.camera.x;
+    var isFloor = this.rowIndex !== undefined && (this.rowIndex === this.totalRows - 1);
+    if (!isFloor) {
       this.ctx.drawImage(this.tileImage, screenX, this.y);
     }
-
     if (lc.DRAW_BOXES) {
       this.ctx.strokeStyle = "black";
       this.ctx.strokeRect(this.boundingBox.x - this.camera.x, this.boundingBox.y, this.boundingBox.width, this.boundingBox.height);
     }
+  }
+
+  draw() {
+    this.drawSurface();
+    this.drawFace();
   }
 
   // Sample the average colour of a tile image, ignoring transparent pixels.

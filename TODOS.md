@@ -75,10 +75,13 @@ and deflect all incoming lasers for a brief moment
 
 - lightening and other artifacts freeze when Zerlin dies (during death animation). Should be just removed, or fade out as normal.
 - somersault makes Z not begin falling, if somersault off of platform, until done with animation. Z should begin falling immediately.
-- upper tile platform surface bleeds through tile face
+- ~~upper tile platform surface bleeds through tile face~~ ✅ fixed: Level.draw() now does two passes — all surfaces first, then all faces
 - some animations with the saber conflict when the saber is doing something different
 - make smaller Z's damge box (don't include his feet)
 - when z dies, and falls over, if he's on a platform, he might be laying in the air off the edge of the platform. Instead, have him fall to floor, or where there is not floating
+- 
+
+
 
 ---
 
