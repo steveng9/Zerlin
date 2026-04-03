@@ -345,10 +345,15 @@ class Tile extends Entity {
     this.ctx.restore();
   }
 
-  // Draw the floor's top surface using the same unified distance model as
-  // _drawTopStrip.  The back edge uses FLOOR_BACK_DIST (> TILE_SURFACE_DIST)
-  // so the floor extends further back than floating tile surfaces.  The front
-  // edge uses FLOOR_FRONT_DIST (D < 100) so it spreads outward past the tile's sides.
+  // Draw the floor's top surface as a 6-point polygon that passes through
+  // tile.y at exactly the tile face width — this is the collision line, so
+  // fixing the horizontal width here eliminates the visual/physics mismatch
+  // where Z appeared to walk off the edge before actually falling.
+  //
+  // Shape (top to bottom):
+  //   back edge  (backY, above tile.y)   — D_back,  narrow (converged)
+  //   mid edge   (tile.y, collision line) — D=100,   exactly tile face width
+  //   front edge (frontY, below screen)  — D_front, wide (spread outward)
   _drawFloorSurface(screenX) {
     var D_back  = lc.FLOOR_BACK_DIST;
     var D_front = lc.FLOOR_FRONT_DIST;
@@ -358,12 +363,17 @@ class Tile extends Entity {
     var left  = screenX;
     var right = screenX + this.width;
 
-    // Back edge: tile's top projected toward vanishing point (rises above tile.y).
+    // Back edge: projected toward vanishing point (above tile.y).
     var backY      = vanishY + (this.y - vanishY) * (100 / D_back);
     var backLeft   = vanishX + (left  - vanishX) * (100 / D_back);
     var backRight  = vanishX + (right - vanishX) * (100 / D_back);
 
-    // Front edge: below screen, projected outward (D_front < 100 → 100/D_front > 1).
+    // Middle edge: exactly at tile.y with full tile face width — matches collision boundary.
+    var midY     = this.y;
+    var midLeft  = left;
+    var midRight = right;
+
+    // Front edge: below screen, spread outward (D_front < 100).
     var frontY     = this.game.surfaceHeight + 120;
     var frontLeft  = vanishX + (left  - vanishX) * (100 / D_front);
     var frontRight = vanishX + (right - vanishX) * (100 / D_front);
@@ -372,21 +382,26 @@ class Tile extends Entity {
     this.ctx.beginPath();
     this.ctx.moveTo(backLeft,   backY);
     this.ctx.lineTo(backRight,  backY);
+    this.ctx.lineTo(midRight,   midY);
     this.ctx.lineTo(frontRight, frontY);
     this.ctx.lineTo(frontLeft,  frontY);
+    this.ctx.lineTo(midLeft,    midY);
     this.ctx.closePath();
     this.ctx.clip();
 
     var c = this._surfaceColor;
     var r = c.r, g = c.g, b = c.b;
+    // Gradient peaks at midY (the tile face edge — most lit), darker toward
+    // back (receding into scene) and toward front (fades to black near camera).
+    var tMid = (midY - backY) / (frontY - backY);
     var grad = this.ctx.createLinearGradient(0, backY, 0, frontY);
-    grad.addColorStop(0,    `rgb(${Math.round(r*0.88)},${Math.round(g*0.88)},${Math.round(b*0.88)})`);
-    grad.addColorStop(0.25, `rgb(${Math.round(r*0.55)},${Math.round(g*0.55)},${Math.round(b*0.55)})`);
+    grad.addColorStop(0,    `rgb(${Math.round(r*0.55)},${Math.round(g*0.55)},${Math.round(b*0.55)})`);
+    grad.addColorStop(tMid, `rgb(${Math.round(r*0.88)},${Math.round(g*0.88)},${Math.round(b*0.88)})`);
     grad.addColorStop(1,    `rgb(6,7,10)`);
     this.ctx.fillStyle = grad;
 
-    var fillLeft = Math.min(backLeft, frontLeft) - 1;
-    var fillW    = Math.max(backRight, frontRight) - fillLeft + 2;
+    var fillLeft = Math.min(backLeft, midLeft, frontLeft) - 1;
+    var fillW    = Math.max(backRight, midRight, frontRight) - fillLeft + 2;
     this.ctx.fillRect(fillLeft, backY, fillW, frontY - backY);
 
     this.ctx.restore();
