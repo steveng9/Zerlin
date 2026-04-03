@@ -428,8 +428,8 @@ Michael Josten`,
     GOD_LIGHT_INTERVAL: 16,
     HIGHWAY_SPEED: 1000,
     TILE_SURFACE_DIST: 110,       // parallax distance of floating tile surface back edges (D > 100 = behind tile face)
-    FLOOR_BACK_DIST: 130,         // parallax distance of floor surface back edge — higher than TILE_SURFACE_DIST so floor extends further back than floating tiles
-    FLOOR_FRONT_DIST: 70,         // parallax distance of floor surface front edge (D < 100 = in front of tiles, spreads outward)
+    FLOOR_BACK_DIST: 200,         // parallax distance of floor surface back edge — higher than TILE_SURFACE_DIST so floor extends further back than floating tiles
+    FLOOR_FRONT_DIST: 40,         // parallax distance of floor surface front edge — must be small enough that formula-derived frontY extends below the canvas (D < ~55 for typical floor position)
     SURFACE_VANISH_Y: 2 / 3,      // vanishing point Y as fraction of canvas height (surfaces above slope down; below slope up)
     SHADOW_RY_SCALE: 0.02,        // shadow ellipse ry = |tile.y - vanishY| * this (0 at centre, ~7 at floor)
 
@@ -576,7 +576,7 @@ Michael Josten`,
       ' d  s  f  n  m  ',   // droids between tiers 2 & 1
       ' -     -     -- ',   // tier 1 — two medium platforms
       ' m b n s d f m b',   // droids above floor
-      ' -------------- '    // floor — full coverage
+      ' ------   ----- '    // floor — full coverage
     ]
 
   },
