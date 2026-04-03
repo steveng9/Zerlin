@@ -144,7 +144,7 @@ class Level {
    * @param {AbstractDroid[]} droids
    */
   drawEntityShadows(players, droids) {
-    var vanishY   = this.game.surfaceHeight / 2;
+    var vanishY   = this.game.surfaceHeight * lc.SURFACE_VANISH_Y;
     var ryScale   = lc.SHADOW_RY_SCALE;
 
     for (var z of players) {
@@ -285,99 +285,90 @@ class Tile extends Entity {
   }
 
   // Draw the thin top-surface parallelogram on non-floor tiles.
-  // The strip's front edge is at the tile's top (tileTopY) and its back edge
-  // converges toward the canvas vertical centre (vanishY).  Strip depth scales
-  // with distance from vanishY so the same real depth reads consistently at
-  // every height.  The back edge gets a horizontal parallax shift to reinforce
-  // the sense of Z-depth.
+  // Both horizontal and vertical back-edge positions are derived from the same
+  // distance D (TILE_SURFACE_DIST) using the parallax formula:
+  //   backCoord = vanish + (frontCoord - vanish) * (100 / D)
+  // This guarantees all surfaces — floating tiles and floor — converge to the
+  // same vanishing point (canvas horizontal centre, SURFACE_VANISH_Y fraction
+  // down the canvas).  Tiles above the horizon slope down; below slope up.
   _drawTopStrip(screenX) {
-    var vanishY = this.game.surfaceHeight / 2;
-    var tileTopY = this.y;
-    // Signed distance: positive = tile below vanishY (camera looks down).
-    //                  negative = tile above vanishY (camera looks up).
-    var distFromVanish = tileTopY - vanishY;
-    if (Math.abs(distFromVanish) < 2) return;
+    var D       = lc.TILE_SURFACE_DIST;
+    var ratio   = 100 / D;
+    var vanishX = this.camera.width / 2;
+    var vanishY = this.game.surfaceHeight * lc.SURFACE_VANISH_Y;
 
-    var df = lc.TILE_DEPTH_FACTOR;
+    var frontY     = this.y;
+    var backY      = vanishY + (frontY - vanishY) * ratio;
+    if (Math.abs(frontY - backY) < 1) return;
 
-    // Vertical: back edge converges toward vanishY (signed — correct direction
-    // for both above- and below-centre tiles).
-    var frontEdgeY = tileTopY;
-    var backEdgeY  = tileTopY - distFromVanish * df;
+    var frontLeft  = screenX;
+    var frontRight = screenX + this.width;
+    var backLeft   = vanishX + (frontLeft  - vanishX) * ratio;
+    var backRight  = vanishX + (frontRight - vanishX) * ratio;
 
-    // Horizontal: distance-based 1-point perspective referenced to screen centre.
-    // Neutral lean (backEdge == frontEdge) when tile is at screen centre, not level start.
-    // df = (1 - 100/D) gives the same rate as the parallax layer system.
-    var dfH = 1 - 100 / lc.TILE_SURFACE_DIST;
-    var screenCenterX = this.camera.width / 2;
-    var left  = screenX;
-    var right = screenX + this.width;
-    var backLeft  = left  + (screenCenterX - left)  * dfH;
-    var backRight = right + (screenCenterX - right) * dfH;
-
-    var topY   = Math.min(frontEdgeY, backEdgeY);
-    var botY   = Math.max(frontEdgeY, backEdgeY);
+    var topY   = Math.min(frontY, backY);
+    var botY   = Math.max(frontY, backY);
     var stripH = botY - topY;
     if (stripH < 1) return;
 
     this.ctx.save();
     this.ctx.beginPath();
-    this.ctx.moveTo(left,      frontEdgeY);
-    this.ctx.lineTo(right,     frontEdgeY);
-    this.ctx.lineTo(backRight, backEdgeY);
-    this.ctx.lineTo(backLeft,  backEdgeY);
+    this.ctx.moveTo(frontLeft,  frontY);
+    this.ctx.lineTo(frontRight, frontY);
+    this.ctx.lineTo(backRight,  backY);
+    this.ctx.lineTo(backLeft,   backY);
     this.ctx.closePath();
     this.ctx.clip();
 
-    // Fully opaque gradient — createLinearGradient direction auto-handles
-    // both strip orientations (above/below centre tile).
     var c = this._surfaceColor;
     var frontStop = `rgb(${Math.round(c.r*0.85)},${Math.round(c.g*0.85)},${Math.round(c.b*0.85)})`;
     var backStop  = `rgb(${Math.round(c.r*0.48)},${Math.round(c.g*0.48)},${Math.round(c.b*0.48)})`;
-    var grad = this.ctx.createLinearGradient(0, backEdgeY, 0, frontEdgeY);
+    var grad = this.ctx.createLinearGradient(0, backY, 0, frontY);
     grad.addColorStop(0, backStop);
     grad.addColorStop(1, frontStop);
     this.ctx.fillStyle = grad;
-    var fillLeft = Math.min(left, backLeft) - 1;
-    var fillW    = Math.max(right, backRight) - fillLeft + 2;
+    var fillLeft = Math.min(frontLeft, backLeft) - 1;
+    var fillW    = Math.max(frontRight, backRight) - fillLeft + 2;
     this.ctx.fillRect(fillLeft, topY, fillW, stripH);
 
     this.ctx.restore();
   }
 
-  // Draw the floor's top surface — a large parallelogram that extends into
-  // the foreground (down the screen) and a small amount behind the tile's
-  // top edge (upward).  The gradient is derived from the tile's average colour.
+  // Draw the floor's top surface using the same unified distance model as
+  // _drawTopStrip.  The back edge (tile's top) uses TILE_SURFACE_DIST so it
+  // aligns exactly with floating tile surfaces.  The front edge uses
+  // FLOOR_FRONT_DIST (D < 100) so it spreads outward past the tile's sides.
   _drawFloorSurface(screenX) {
-    var backEdgeY  = this.y - lc.FLOOR_BACK_OVERSHOOT;
-    var frontEdgeY = this.game.surfaceHeight + 120;
-
-    // Distance-based 1-point perspective referenced to screen centre — same fix
-    // as _drawTopStrip.  df = (1 - 100/D): positive for D>100 (converges toward
-    // centre), negative for D<100 (diverges away from centre, i.e. foreground).
-    var dfBack  = 1 - 100 / lc.FLOOR_BACK_DIST;
-    var dfFront = 1 - 100 / lc.FLOOR_FRONT_DIST;
-    var screenCenterX = this.camera.width / 2;
+    var D_back  = lc.TILE_SURFACE_DIST;
+    var D_front = lc.FLOOR_FRONT_DIST;
+    var vanishX = this.camera.width / 2;
+    var vanishY = this.game.surfaceHeight * lc.SURFACE_VANISH_Y;
 
     var left  = screenX;
     var right = screenX + this.width;
-    var backLeft   = left  + (screenCenterX - left)  * dfBack;
-    var backRight  = right + (screenCenterX - right) * dfBack;
-    var frontLeft  = left  + (screenCenterX - left)  * dfFront;
-    var frontRight = right + (screenCenterX - right) * dfFront;
+
+    // Back edge: tile's top projected toward vanishing point (rises above tile.y).
+    var backY      = vanishY + (this.y - vanishY) * (100 / D_back);
+    var backLeft   = vanishX + (left  - vanishX) * (100 / D_back);
+    var backRight  = vanishX + (right - vanishX) * (100 / D_back);
+
+    // Front edge: below screen, projected outward (D_front < 100 → 100/D_front > 1).
+    var frontY     = this.game.surfaceHeight + 120;
+    var frontLeft  = vanishX + (left  - vanishX) * (100 / D_front);
+    var frontRight = vanishX + (right - vanishX) * (100 / D_front);
 
     this.ctx.save();
     this.ctx.beginPath();
-    this.ctx.moveTo(backLeft,   backEdgeY);
-    this.ctx.lineTo(backRight,  backEdgeY);
-    this.ctx.lineTo(frontRight, frontEdgeY);
-    this.ctx.lineTo(frontLeft,  frontEdgeY);
+    this.ctx.moveTo(backLeft,   backY);
+    this.ctx.lineTo(backRight,  backY);
+    this.ctx.lineTo(frontRight, frontY);
+    this.ctx.lineTo(frontLeft,  frontY);
     this.ctx.closePath();
     this.ctx.clip();
 
     var c = this._surfaceColor;
     var r = c.r, g = c.g, b = c.b;
-    var grad = this.ctx.createLinearGradient(0, backEdgeY, 0, frontEdgeY);
+    var grad = this.ctx.createLinearGradient(0, backY, 0, frontY);
     grad.addColorStop(0,    `rgb(${Math.round(r*0.88)},${Math.round(g*0.88)},${Math.round(b*0.88)})`);
     grad.addColorStop(0.25, `rgb(${Math.round(r*0.55)},${Math.round(g*0.55)},${Math.round(b*0.55)})`);
     grad.addColorStop(1,    `rgb(6,7,10)`);
@@ -385,7 +376,7 @@ class Tile extends Entity {
 
     var fillLeft = Math.min(backLeft, frontLeft) - 1;
     var fillW    = Math.max(backRight, frontRight) - fillLeft + 2;
-    this.ctx.fillRect(fillLeft, backEdgeY, fillW, frontEdgeY - backEdgeY);
+    this.ctx.fillRect(fillLeft, backY, fillW, frontY - backY);
 
     this.ctx.restore();
   }
