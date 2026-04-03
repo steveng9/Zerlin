@@ -335,11 +335,11 @@ class Tile extends Entity {
   }
 
   // Draw the floor's top surface using the same unified distance model as
-  // _drawTopStrip.  The back edge (tile's top) uses TILE_SURFACE_DIST so it
-  // aligns exactly with floating tile surfaces.  The front edge uses
-  // FLOOR_FRONT_DIST (D < 100) so it spreads outward past the tile's sides.
+  // _drawTopStrip.  The back edge uses FLOOR_BACK_DIST (> TILE_SURFACE_DIST)
+  // so the floor extends further back than floating tile surfaces.  The front
+  // edge uses FLOOR_FRONT_DIST (D < 100) so it spreads outward past the tile's sides.
   _drawFloorSurface(screenX) {
-    var D_back  = lc.TILE_SURFACE_DIST;
+    var D_back  = lc.FLOOR_BACK_DIST;
     var D_front = lc.FLOOR_FRONT_DIST;
     var vanishX = this.camera.width / 2;
     var vanishY = this.game.surfaceHeight * lc.SURFACE_VANISH_Y;
