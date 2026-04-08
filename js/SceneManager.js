@@ -48,7 +48,7 @@ class SceneManager2 {
     this.game = game;
     this.camera = new Camera(this, 0, 0, this.game.ctx.canvas.width, this.game.ctx.canvas.height);
     this.checkPoint = new CheckPoint(this.game, 0, 0);
-    this.infiniteHealth = false;
+    this.infiniteHealth = Constants.GameEngineConstants.INFINITE_HEALTH_DEFAULT;
     this.Zerlin = new Zerlin(this.game, this.camera, this);
     this.boss = null;
     this.collisionManager = new CollisionManager(this.game, this);
@@ -232,6 +232,20 @@ class SceneManager2 {
   startMultiplayerTrainingScene() {
     this._setupTrainingGround();
     this.currentScene = new TrainingGroundScene(this, true);
+    var btn = document.getElementById('bossBattleButton');
+    if (btn) { btn.style.display = ''; btn.value = 'Versus Mode'; }
+  }
+
+  startBossVsZerlinScene() {
+    this._setupTrainingGround();
+    this.currentScene = new TrainingGroundScene(this, false, true);
+  }
+
+  startBossVsZerlinMultiplayerScene() {
+    this._setupTrainingGround();
+    this.currentScene = new TrainingGroundScene(this, true, true);
+    var btn = document.getElementById('bossBattleButton');
+    if (btn) { btn.style.display = ''; btn.value = 'Team Mode'; }
   }
 
   /**
@@ -253,6 +267,8 @@ class SceneManager2 {
     this.otherEntities = [];
     this.activePowerups = [];
     this.boss = null;
+    this.Zerlin2 = null;
+    this.multiplayerActive = false;
     this.level.set();
 
     // Initialize training config only on first entry; preserve across respawns
@@ -419,11 +435,14 @@ class SceneManager2 {
   toggleInfiniteHealth() {
     this.infiniteHealth = !this.infiniteHealth;
     this.Zerlin.infiniteHealth = this.infiniteHealth;
+    this.Zerlin.setHealth();
     if (this.currentScene && this.currentScene.Zerlin2) {
       this.currentScene.Zerlin2.infiniteHealth = this.infiniteHealth;
       this.currentScene.Zerlin2.setHealth();
     }
-    this.Zerlin.setHealth();
+    if (this.currentScene && this.currentScene.playableBoss) {
+      this.currentScene.playableBoss.infiniteHealth = this.infiniteHealth;
+    }
   }
 
   // ── Misc ──────────────────────────────────────────────────────────────────

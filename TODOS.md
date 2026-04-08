@@ -61,7 +61,7 @@ and deflect all incoming lasers for a brief moment
 
 ## 15. Change movements of some of the Droids so that they don't fly within range of Z's lightsaber slash / throw. So Z is required to deflect lasers at it to destroy it.
 
-## 
+## 16. Add bomb icons for p2 in "verus" mode, where the blue force bar is for p1 under health. They get spent for every bomb drop. Add a regenerating power-up that refill's p2's bomb supply.
 
 
 
@@ -76,12 +76,12 @@ and deflect all incoming lasers for a brief moment
 - lightening and other artifacts freeze when Zerlin dies (during death animation). Should be just removed, or fade out as normal.
 - somersault makes Z not begin falling, if somersault off of platform, until done with animation. Z should begin falling immediately.
 - ~~upper tile platform surface bleeds through tile face~~ ✅ fixed: Level.draw() now does two passes — all surfaces first, then all faces
-- some animations with the saber conflict when the saber is doing something different
+- some animations with the saber conflict when the saber is doing something different (like in the air, mid throw)
 - make smaller Z's damge box (don't include his feet)
 - when z dies, and falls over, if he's on a platform, he might be laying in the air off the edge of the platform. Instead, have him fall to floor, or where there is not floating
-- 
-
-
+- When z dies in multiplayer, Z1 is still transparent when he respawns.
+- When z dies in multiplayer "versus" mode, the beam cannon still collides with Z1's bounding box in p2's view, but not p1's.
+- boss death / falling animation does not play in p2's view ("versus" mode). In p1's view, it persists upon respawn.
 
 ---
 

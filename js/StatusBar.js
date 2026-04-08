@@ -237,6 +237,29 @@ class ForceStatusBarP2 extends ForceStatusBar {
   setMaxSize() { if (this.sceneManager.Zerlin2) this.maxSize = this.sceneManager.Zerlin2.maxForce; }
 }
 
+/**
+ * Health bar for the player-controlled Boss in Boss Battle mode.
+ * Displayed in the top-right like P2 Zerlin's bar, with golden colouring.
+ */
+class BossPlayerHealthBar extends AbstractStatusBar {
+  constructor(game, sm, x, y, boss) {
+    super(game, sm, x, y, true);
+    this.boss = boss;
+    this.maxSize = boss.maxHealth;
+    this.current = boss.currentHealth;
+    this.foregroundColor = this.game.ctx.createLinearGradient(
+      x, y, x + this.maxLength, y);
+    this.foregroundColor.addColorStop(0,   'rgb(165, 120, 0)');
+    this.foregroundColor.addColorStop(0.5, 'rgb(220, 165, 20)');
+    this.foregroundColor.addColorStop(1,   'rgb(240, 210, 55)');
+    this.backgroundColor = 'rgba(180, 130, 30, 0.5)';
+    this.criticalForegroundColor = 'rgba(255, 80, 0, 1)';
+    this.criticalBackgroundColor = 'rgba(255, 140, 60, 0.5)';
+  }
+  setCurrent() { this.current = this.boss.currentHealth; }
+  setMaxSize() { this.maxSize = this.boss.maxHealth; }
+}
+
 class BossHealthStatusBar extends AbstractStatusBar {
   constructor(game, x, y, boss) {
     super(game, game.sceneManager, x, y, sbc.BOSS_BAR_HAS_CRITICAL_STATE);

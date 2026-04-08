@@ -18,6 +18,7 @@ class CollisionManager {
   constructor(game, sceneManager) {
     this.game = game;
     this.sceneManager = sceneManager;
+    this._bossBeamHitCooldown = 0; // throttle explosion spawn to avoid audio/visual spam
   }
 
   handleCollisions() {
@@ -33,10 +34,7 @@ class CollisionManager {
       this.droidOnSaber();   // kills ghost droids — host only
       this.laserOnDroid();   // kills ghost droids — host only
       this.beamOnDroid();    // kills ghost droids — host only
-      this.beamOnPlatform(); // mutates boss beam segments — host only
-      this.saberOnBoss();
-      this.laserOnBoss();
-      this.beamOnBoss();
+      this.laserOnBoss();    // boss health mutation — host only
       this.bombOnPlatform();
       this.ZerlinOnPowerup(); // host-authoritative, client syncs via snapshot
     }
@@ -45,8 +43,16 @@ class CollisionManager {
     this.laserOnZerlin();
     this.ZerlinOnPlatform();
     this.ZerlinOnEdgeOfMap();
-    this.beamOnSaber();
-    this.beamOnZerlin();
+    // beamOnPlatform runs on both host and client: purely truncates endX/endY so the
+    // client's beam matches the host's, preventing false saber deflections behind platforms.
+    this.beamOnPlatform();
+    // beamOnSaber MUST run before beamOnZerlin: it skips deflection when Z's body is
+    // closer to the beam origin than the saber, so beamOnZerlin only applies damage
+    // to beam segments that were NOT already intercepted by the saber.
+    this.beamOnSaber();  // deflects only when saber is closer than Z's body
+    this.beamOnZerlin(); // truncates at Z's body and applies damage
+    this.beamOnBoss();   // truncates beam at boss visually on both sides; damage is host-only internally
+    this.saberOnBoss();  // visual always; health mutation host-only internally
     this.catchSaber();
     this.bombExplosionOnZerlin();
     this.ZerlinOnCheckpoint();
@@ -370,20 +376,37 @@ class CollisionManager {
             p1: lightsaber.bladeCollar,
             p2: lightsaber.bladeTip
           });
-          // TODO: check for collision with ANY deflective agent (i. e. a mirror or laser shield or something)
           if (collisionWithSaber.collided) {
-            lightsaber.deflectingBeam = true;
-            beamSegments[j].endX = collisionWithSaber.intersection.x;
-            beamSegments[j].endY = collisionWithSaber.intersection.y;
-            var newAngle = 2 * lightsaber.getSaberAngle() - beamSegments[j].angle;
-            beamSegments.push({
-              x: collisionWithSaber.intersection.x,
-              y: collisionWithSaber.intersection.y,
-              angle: newAngle,
-              endX: Math.cos(newAngle) * bc.MAX_BEAM_LENGTH + collisionWithSaber.intersection.x,
-              endY: Math.sin(newAngle) * bc.MAX_BEAM_LENGTH + collisionWithSaber.intersection.y,
-              deflected: true
-            });
+            // Only deflect if the saber intersection is closer to beam origin than Z's body.
+            // If Z's body blocks the beam first, let beamOnZerlin handle it (no phantom deflection).
+            var saberIsect = collisionWithSaber.intersection;
+            var sdx = saberIsect.x - beamSegments[j].x, sdy = saberIsect.y - beamSegments[j].y;
+            var saberDist2 = sdx * sdx + sdy * sdy;
+            var shouldDeflect = true;
+            var zerlinBox = zerlin.boundingbox;
+            if (!zerlinBox.hidden) {
+              var zc2 = collideLineWithRectangle(beamSegments[j].x, beamSegments[j].y,
+                beamSegments[j].endX, beamSegments[j].endY,
+                zerlinBox.x, zerlinBox.y, zerlinBox.width, zerlinBox.height);
+              if (zc2.collides) {
+                var zIsect = findClosestIntersectionOnBox(zc2, beamSegments[j]);
+                var zdx = zIsect.x - beamSegments[j].x, zdy = zIsect.y - beamSegments[j].y;
+                if (zdx * zdx + zdy * zdy <= saberDist2) shouldDeflect = false;
+              }
+            }
+            if (shouldDeflect) {
+              lightsaber.deflectingBeam = true;
+              beamSegments[j].endX = saberIsect.x;
+              beamSegments[j].endY = saberIsect.y;
+              var newAngle = 2 * lightsaber.getSaberAngle() - beamSegments[j].angle;
+              beamSegments.push({
+                x: saberIsect.x, y: saberIsect.y,
+                angle: newAngle,
+                endX: Math.cos(newAngle) * bc.MAX_BEAM_LENGTH + saberIsect.x,
+                endY: Math.sin(newAngle) * bc.MAX_BEAM_LENGTH + saberIsect.y,
+                deflected: true
+              });
+            }
           }
         }
         j++;
@@ -424,10 +447,8 @@ class CollisionManager {
           if (zerlinCollision.collides) {
             beam.isSizzling = true;
 
-            if (!this.sceneManager.Zerlin.invincible) {
+            if (!this.sceneManager.Zerlin.invincible && !this.sceneManager.Zerlin.infiniteHealth) {
               this.sceneManager.Zerlin.currentHealth -= this.game.clockTick * bc.BEAM_HP_PER_SECOND;
-              // console.log(this.sceneManager.Zerlin.currentHealth);
-              // console.log(this.sceneManager.Zerlin.hits);
             }
 
             // find intersection with box with shortest beam length, end beam there
@@ -453,23 +474,32 @@ class CollisionManager {
           var bossCollision = collideLineWithRectangle(beamSeg.x, beamSeg.y, beamSeg.endX, beamSeg.endY,
             bossBox.x, bossBox.y, bossBox.width, bossBox.height);
           if (bossCollision.collides) {
-
-            this.sceneManager.boss.hits += this.game.clockTick;
-            this.sceneManager.boss.beamDamageTimer += this.game.clockTick;
-            //addition
-            this.sceneManager.boss.currentHealth -= zConst.Z_BOSS_BEAM_DAMAGE;
-
-            // find intersection with box with shortest beam length, end beam there
+            // Truncate beam at boss visually on both host and client
             var closestIntersection = findClosestIntersectionOnBox(bossCollision, beamSeg);
             beamSeg.endX = closestIntersection.x;
             beamSeg.endY = closestIntersection.y;
-            if (this.sceneManager.boss.beamDamageTimer > bc.B_BEAM_EXPLOSION_THRESHHOLD) {
-              this.sceneManager.addEntity(new DroidExplosion(this.game, closestIntersection.x, closestIntersection.y, .7, .2));
 
-              this.sceneManager.boss.beamCannon.turnOff();
-              this.sceneManager.boss.fall();
-              this.sceneManager.boss.beamDamageTimer = 0;
-              break;
+            // Damage and fall reaction are host-authoritative only
+            var isHostOrSolo = !this.sceneManager.multiplayerActive ||
+                               (this.game.network && this.game.network.isHost);
+            // State mutations: host-only
+            var isHostOrSolo = !this.sceneManager.multiplayerActive ||
+                               (this.game.network && this.game.network.isHost);
+            if (isHostOrSolo) {
+              this.sceneManager.boss.hits += this.game.clockTick;
+              this.sceneManager.boss.beamDamageTimer += this.game.clockTick;
+              this.sceneManager.boss.currentHealth -= zConst.DEFLECTED_BEAM_BOSS_DAMAGE_PER_S * this.game.clockTick;
+              if (this.sceneManager.boss.beamDamageTimer > bc.B_BEAM_EXPLOSION_THRESHHOLD) {
+                this.sceneManager.boss.beamCannon.turnOff();
+                this.sceneManager.boss.fall();
+                this.sceneManager.boss.beamDamageTimer = 0;
+              }
+            }
+            // Visual spark — throttled to ~5 Hz to avoid sound/animation spam
+            this._bossBeamHitCooldown -= this.game.clockTick;
+            if (this._bossBeamHitCooldown <= 0) {
+              this.sceneManager.addEntity(new DroidExplosion(this.game, closestIntersection.x, closestIntersection.y, .7, .2));
+              this._bossBeamHitCooldown = 0.2;
             }
           }
         }
@@ -511,60 +541,59 @@ class CollisionManager {
   }
 
   laserOnBoss() {
-    if (this.game.boss && !this.game.boss.boundingbox.hidden) {
-      var boss = this.game.boss;
+    if (this.sceneManager.boss && !this.sceneManager.boss.boundingbox.hidden) {
+      var boss = this.sceneManager.boss;
       var bossBox = boss.boundingbox;
-      for (var i = 0; i < this.game.lasers.length; i++) {
-        var laser = this.game.lasers[i];
+      for (var i = this.sceneManager.lasers.length - 1; i >= 0; i--) {
+        var laser = this.sceneManager.lasers[i];
         if (laser.isDeflected &&
           laser.x > bossBox.left &&
           laser.x < bossBox.right &&
           laser.y > bossBox.top &&
           laser.y < bossBox.bottom) {
 
-          //play sound of boss being hit
           boss.hits++;
-          boss.currentHealth -= 1 //laser damage later?
+          boss.currentHealth -= 1;
           laser.removeFromWorld = true;
-
         }
       }
     }
   }
 
   saberOnBoss() {
-    if (this.sceneManager.boss && !this.sceneManager.boss.boundingbox.hidden) {
-      var zerlin = this.sceneManager.Zerlin;
-      var bossBox = this.sceneManager.boss.boundingbox;
-      var bossCenterX = bossBox.x + bossBox.width / 2;
-      var bossCenterY = bossBox.y + bossBox.height / 2;
-      if (zerlin.slashing && zerlin.slashZone && zerlin.slashZone.active) {
+    if (!this.sceneManager.boss || this.sceneManager.boss.boundingbox.hidden) return;
+    var zerlin = this.sceneManager.Zerlin;
+    var bossBox = this.sceneManager.boss.boundingbox;
+    var bossCenterX = bossBox.x + bossBox.width / 2;
+    var bossCenterY = bossBox.y + bossBox.height / 2;
+    var isHostOrSolo = !this.sceneManager.multiplayerActive || (this.game.network && this.game.network.isHost);
 
-        // check if droid in circular path of saber and not below zerlin
-        if (collidePointWithCircle(bossCenterX,
-            bossCenterY,
-            zerlin.slashZone.outerCircle.x,
-            zerlin.slashZone.outerCircle.y,
-            zerlin.slashZone.outerCircle.radius) &&
-          !collidePointWithCircle(bossCenterX,
-            bossCenterY,
-            zerlin.slashZone.innerCircle.x,
-            zerlin.slashZone.innerCircle.y,
-            zerlin.slashZone.innerCircle.radius) &&
+    var hit = false;
+    var explosionScale = 0;
+    if (zerlin.slashing && zerlin.slashZone && zerlin.slashZone.active) {
+      if (collidePointWithCircle(bossCenterX, bossCenterY,
+            zerlin.slashZone.outerCircle.x, zerlin.slashZone.outerCircle.y, zerlin.slashZone.outerCircle.radius) &&
+          !collidePointWithCircle(bossCenterX, bossCenterY,
+            zerlin.slashZone.innerCircle.x, zerlin.slashZone.innerCircle.y, zerlin.slashZone.innerCircle.radius) &&
           bossCenterY < zerlin.y) {
-          // this.sceneManager.addEntity(new DroidExplosion(this.game, bossCenterX, bossBox.y + bossBox.height / 2, 2.3, .7));
-          // this.sceneManager.boss.hideBox();
-          // this.sceneManager.boss.hits += 3;
-          // //added ---- below
-          // this.sceneManager.boss.currentHealth -= zConst.Z_SLASH_DAMAGE;
-          this.sceneManager.boss.hitBySaber(2.3);
-        }
-      } else if (zerlin.lightsaber.throwing) {
-        if (collidePointWithCircle(bossCenterX, bossCenterY, zerlin.lightsaber.airbornSaber.x, zerlin.lightsaber.airbornSaber.y, zerlin.lightsaber.airbornSaber.radius)) {
-          this.sceneManager.boss.hitBySaber(.7);
-          // this.sceneManager.boss.currentHealth -= zc.AIRBORN_SABER_DAMAGE;
-          // this.sceneManager.addEntity(new DroidExplosion(this.game, bossCenterX, bossCenterY, .7, .2));
-        }
+        hit = true;
+        explosionScale = 2.3;
+      }
+    } else if (zerlin.lightsaber.throwing) {
+      if (collidePointWithCircle(bossCenterX, bossCenterY,
+            zerlin.lightsaber.airbornSaber.x, zerlin.lightsaber.airbornSaber.y, zerlin.lightsaber.airbornSaber.radius)) {
+        hit = true;
+        explosionScale = 0.7;
+      }
+    }
+
+    if (hit) {
+      if (isHostOrSolo) {
+        // Host: full hitBySaber (health mutation + cooldown + visual)
+        this.sceneManager.boss.hitBySaber(explosionScale);
+      } else {
+        // Client: visual only — health state comes from snapshot
+        this.sceneManager.addEntity(new DroidExplosion(this.game, bossCenterX, bossCenterY, explosionScale, .2));
       }
     }
   }

@@ -100,7 +100,8 @@ Constants = {
     Z_LIGHTNING_FORCE_COST: 5,
     /* Zerlin damage */
     Z_SLASH_DAMAGE: 25,
-    Z_BOSS_BEAM_DAMAGE: 0.5,
+    Z_BOSS_BEAM_DAMAGE: 0.5,               // legacy per-frame rate (unused — see below)
+    DEFLECTED_BEAM_BOSS_DAMAGE_PER_S: 10,  // hp/s dealt to boss by Zerlin-deflected beam
 
     Z_SCALE: 0.50, //was .55
 
@@ -227,7 +228,8 @@ Constants = {
   },
 
   GameEngineConstants: {
-    //PHI : 1.618
+    SFX_MUTED_DEFAULT:       true,   // true = SFX muted on startup
+    INFINITE_HEALTH_DEFAULT: true,   // true = infinite health on startup
   },
 
   SceneManagerConstants: {
@@ -348,7 +350,6 @@ Michael Josten`,
 
   BossConstants: {
     B_MAX_HEALTH: 200, // was 150
-    BEAM_HP_PER_SECOND: 2, //was .5
 
     B_SCALE: .6,
     B_DRAW_COLLISION_BOUNDRIES: false,
@@ -376,7 +377,7 @@ Michael Josten`,
     BC_MUZZLE_RIGHT_Y: 81,
     BC_MUZZLE_LEFT_Y: 27,
     BEAM_DROID_LASER_WIDTH: 26,
-    BEAM_HP_PER_SECOND: .3,
+    BEAM_HP_PER_SECOND: 1.5,   // hp/s dealt to Zerlin by boss beam (was .3 — too slow)
     BEAM_ANGLE_ACCELERATION_RADIANS: Math.PI * 2,
     MICRO_BEAM_COUNT: 5,
     MUZZLE_WIDTH: 13,
@@ -390,6 +391,29 @@ Michael Josten`,
 
     BEAM_MODE_DURATION: 15,
     BOMB_MODE_DURATION: 5
+  },
+
+  BossPlayerConstants: {
+    // Controls (P2 — WASD + mouse, consistent with Zerlin)
+    MOVE_LEFT:  'KeyA',
+    MOVE_RIGHT: 'KeyD',
+    MOVE_UP:    'KeyW',
+    MOVE_DOWN:  'KeyS',
+    FIRE_BEAM:  'leftClick', // hold left-click to fire beam cannon
+    DROP_BOMB:  'Space',     // tap Space to drop a bomb
+
+    // Physics — momentum-based movement
+    ACCEL_X:      900,  // horizontal acceleration while key is held (px/s²)
+    ACCEL_Y:      700,  // vertical acceleration while key is held (px/s²)
+    MAX_SPEED_X:  350,  // peak horizontal speed (px/s)
+    MAX_SPEED_Y:  280,  // peak vertical speed (px/s)
+    PASSIVE_DAMP: 2.2,  // passive deceleration rate when no key pressed (fraction lost per second, exponential)
+    BURST_SPEED_X: 120, // minimum speed instantly applied when pressing a horizontal key from rest
+    BURST_SPEED_Y: 100, // minimum speed instantly applied when pressing a vertical key from rest
+
+    // Gameplay
+    MAX_HEALTH:     100,  // boss hp in versus mode (tune this to adjust durability)
+    RESPAWN_DELAY:  2.5,  // seconds before the boss respawns after death
   },
 
   StatusBarConstants: {

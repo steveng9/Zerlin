@@ -630,3 +630,203 @@ class Bomb extends Entity {
 
 	}
 }
+
+
+/**
+ * Player-controlled version of the Boss for the adversarial Boss Battle multiplayer mode.
+ *
+ * P2 (client) controls:
+ *   WASD        — fly in any direction (consistent with Zerlin's movement keys)
+ *   Mouse       — aims the beam cannon; facing direction flips to match mouse side
+ *   Left-click  — hold to fire beam cannon
+ *   Space       — tap to drop a bomb
+ *
+ * Network: mirrors the Zerlin2 host/client input-swap pattern.
+ *   HOST  → reads P2's input from net.lastReceivedInput
+ *   CLIENT → reads from game.keys / game.mouse directly (local ghost)
+ *
+ * On death the boss falls, then respawns at its spawn point after a short delay.
+ */
+class PlayableBoss extends Boss {
+  constructor(game, startX, startY) {
+    super(game, startX, startY);
+    this.spawnX = startX;
+    this.spawnY = startY;
+    this.maxHealth = Constants.BossPlayerConstants.MAX_HEALTH;
+    this.currentHealth = this.maxHealth;
+    this._prevBombKey = false;
+    this.deadTimer = 0;
+    this.infiniteHealth = false; // set by SceneManager.toggleInfiniteHealth / snapshot
+    // Disable auto-aim at Zerlin; cannon angle is driven by player mouse instead
+    this.beamCannon.setBeamAngle = () => {};
+    // Start jetpack sound
+    this.game.audio.playSound(this.game.audio.jetPack);
+    this.jetPackSoundOn = true;
+  }
+
+  update() {
+    var net = this.game.network;
+    if (net && net.isHost && net.lastReceivedInput) {
+      var inp = net.lastReceivedInput;
+      this._doUpdate(inp.keys || {}, inp.mouseX || 0, inp.mouseY || 0);
+    } else {
+      var mx = this.game.mouse ? this.game.mouse.x : 0;
+      var my = this.game.mouse ? this.game.mouse.y : 0;
+      this._doUpdate(this.game.keys, mx, my);
+    }
+  }
+
+  _doUpdate(keys, mouseX, mouseY) {
+    const bpc = Constants.BossPlayerConstants;
+
+    // ── Dead state: fall under gravity, wait, then respawn ─────────────────
+    if (!this.alive) {
+      this.deadTimer -= this.game.clockTick;
+      this.deltaY += zc.GRAVITATIONAL_ACCELERATION * 0.7 * this.game.clockTick;
+      var ddx = this.game.clockTick * this.deltaX;
+      var ddy = this.game.clockTick * this.deltaY;
+      this.x += ddx;
+      this.y += ddy;
+      this.boundingbox.translateCoordinates(ddx, ddy);
+      this.beamCannon.update();
+      for (let i = this.bombs.length - 1; i >= 0; i--) {
+        this.bombs[i].update();
+        if (this.bombs[i].removeFromWorld) this.bombs.splice(i, 1);
+      }
+      // Only host auto-respawns via the local timer; on the client, respawn is driven
+      // by the snapshot (alive: true) to avoid a race where P2 respawns early and
+      // the next alive:false snapshot immediately re-triggers die().
+      var isClient = this.game.network && !this.game.network.isHost;
+      if (this.deadTimer <= 0 && !isClient) this.respawn();
+      return;
+    }
+
+    this.hitWithSaberRecoveryTime -= this.game.clockTick;
+
+    if (!this.jetPackSoundOn) {
+      this.game.audio.playSound(this.game.audio.jetPack);
+      this.jetPackSoundOn = true;
+    }
+
+    // ── Aim cannon at mouse; flip facing to match mouse side ──────────────
+    this._aimCannon(mouseX, mouseY);
+
+    // ── WASD movement — momentum/acceleration model ────────────────────────
+    // Pressing a key accelerates in that direction up to MAX_SPEED.
+    // Pressing the opposite key decelerates then reverses (proportional to hold time).
+    // No keys pressed → passive damping brings velocity gradually to zero.
+    const dt = this.game.clockTick;
+    if (keys[bpc.MOVE_LEFT]) {
+      if (this.deltaX > -bpc.BURST_SPEED_X) this.deltaX = -bpc.BURST_SPEED_X; // instant kick from rest
+      this.deltaX = Math.max(this.deltaX - bpc.ACCEL_X * dt, -bpc.MAX_SPEED_X);
+    } else if (keys[bpc.MOVE_RIGHT]) {
+      if (this.deltaX < bpc.BURST_SPEED_X) this.deltaX = bpc.BURST_SPEED_X;   // instant kick from rest
+      this.deltaX = Math.min(this.deltaX + bpc.ACCEL_X * dt,  bpc.MAX_SPEED_X);
+    } else {
+      this.deltaX *= (1 - bpc.PASSIVE_DAMP * dt);
+      if (Math.abs(this.deltaX) < 1) this.deltaX = 0;
+    }
+    if (keys[bpc.MOVE_UP]) {
+      if (this.deltaY > -bpc.BURST_SPEED_Y) this.deltaY = -bpc.BURST_SPEED_Y;
+      this.deltaY = Math.max(this.deltaY - bpc.ACCEL_Y * dt, -bpc.MAX_SPEED_Y);
+    } else if (keys[bpc.MOVE_DOWN]) {
+      if (this.deltaY < bpc.BURST_SPEED_Y) this.deltaY = bpc.BURST_SPEED_Y;
+      this.deltaY = Math.min(this.deltaY + bpc.ACCEL_Y * dt,  bpc.MAX_SPEED_Y);
+    } else {
+      this.deltaY *= (1 - bpc.PASSIVE_DAMP * dt);
+      if (Math.abs(this.deltaY) < 1) this.deltaY = 0;
+    }
+
+    // Clamp to visible arena (stays on screen regardless of camera scroll)
+    var camX = this.sceneManager.camera.x;
+    var newX = this.x + this.game.clockTick * this.deltaX;
+    var newY = this.y + this.game.clockTick * this.deltaY;
+    newX = Math.max(camX + 60, Math.min(camX + this.game.surfaceWidth - 60, newX));
+    newY = Math.max(60, Math.min(this.game.surfaceHeight - 160, newY));
+    var actualDx = newX - this.x;
+    var actualDy = newY - this.y;
+    this.x = newX;
+    this.y = newY;
+    this.boundingbox.translateCoordinates(actualDx, actualDy);
+
+    // ── Hit-immunity cooldown ──────────────────────────────────────────────
+    if (this.boundingbox.hidden) {
+      this.imuneToDamageTimer -= this.game.clockTick;
+      if (this.imuneToDamageTimer < 0) this.boundingbox.hidden = false;
+    }
+
+    // ── Beam: hold left-click to fire, release to stop ────────────────────
+    var fireBeamDown = !!keys[bpc.FIRE_BEAM];
+    if (fireBeamDown && !this.shooting) {
+      this.shoot();
+    } else if (!fireBeamDown && this.shooting) {
+      if (this.beamCannon.on) this.beamCannon.turnOff();
+      this.shooting = false;
+    }
+
+    // ── Bomb: one per Space press ──────────────────────────────────────────
+    var bombKeyDown = !!keys[bpc.DROP_BOMB];
+    if (bombKeyDown && !this._prevBombKey) this.dropBomb();
+    this._prevBombKey = bombKeyDown;
+
+    this.beamCannon.update();
+
+    for (let i = this.bombs.length - 1; i >= 0; i--) {
+      this.bombs[i].update();
+      if (this.bombs[i].removeFromWorld) this.bombs.splice(i, 1);
+    }
+
+    if (this.currentHealth <= 0 && !this.infiniteHealth) this.die();
+    if (this.infiniteHealth && this.currentHealth < this.maxHealth) this.currentHealth = this.maxHealth;
+  }
+
+  /**
+   * Aim the cannon at the mouse cursor.
+   * Converts screen-space mouseX to world coords, then sets beamAngle directly
+   * (bypasses the AI auto-aim that targets sceneManager.Zerlin).
+   * Also flips facing direction based on which side of the boss the mouse is on.
+   */
+  _aimCannon(mouseX, mouseY) {
+    var worldMouseX = mouseX + this.sceneManager.camera.x;
+    var dx = worldMouseX - this.x;
+    var dy = mouseY - this.y;
+    this.beamCannon.beamAngle = Math.atan2(dy, dx);
+    this.beamCannon.beamAngleDelta = 0;
+    if (dx < 0 && this.facingRight)  this.faceLeft();
+    else if (dx > 0 && !this.facingRight) this.faceRight();
+  }
+
+  // PlayableBoss is human-controlled — suppress the AI stagger so beamOnBoss
+  // doesn't force the player into the falling animation mid-flight.
+  // The beam cannon is still turned off by beamOnBoss; only the visual/physics
+  // fall is suppressed here.
+  fall() {}
+
+  die() {
+    if (!this.alive) return;  // guard against double-die
+    this.alive = false;
+    this.deadTimer = Constants.BossPlayerConstants.RESPAWN_DELAY;
+    this.game.audio.jetPack.stop();
+    this.jetPackSoundOn = false;
+    if (this.shooting && this.beamCannon.on) this.beamCannon.turnOff();
+    this.shooting = false;
+    this.deltaX = 0;
+    this.deltaY = -80;  // small upward kick before gravity takes over
+    this.falling = true;
+  }
+
+  respawn() {
+    this.alive = true;
+    this.currentHealth = this.maxHealth;
+    this.x = this.spawnX;
+    this.y = this.spawnY;
+    this.deltaX = 0;
+    this.deltaY = 0;
+    this.falling = false;
+    this.bombs = [];
+    this.boundingbox.hidden = false;
+    if (this.facingRight) this.faceRight(); else this.faceLeft();
+    this.game.audio.playSound(this.game.audio.jetPack);
+    this.jetPackSoundOn = true;
+  }
+}

@@ -146,18 +146,50 @@ class GameEngine {
     this.sceneManager.init();
 
     var infiniteHealthButton = document.getElementById("infiniteHealth");
+    var _ihDefault = Constants.GameEngineConstants.INFINITE_HEALTH_DEFAULT;
+    infiniteHealthButton.value = _ihDefault ? "Infinite Health: ON" : "Infinite Health: OFF";
+    infiniteHealthButton.style.background = _ihDefault ? "#cc3300" : "";
+    infiniteHealthButton.style.color = _ihDefault ? "#ffffff" : "";
     infiniteHealthButton.addEventListener('click', () => {
-      this.sceneManager.toggleInfiniteHealth();
-      var on = this.sceneManager.infiniteHealth;
-      infiniteHealthButton.value = on ? "Infinite Health: ON" : "Infinite Health: OFF";
-      infiniteHealthButton.style.background = on ? "#cc3300" : "";
-      infiniteHealthButton.style.color = on ? "#ffffff" : "";
+      var scene = this.sceneManager.currentScene;
+      var net = this.network;
+      if (scene && scene.multiplayerActive && net && !net.isHost) {
+        // P2 (client): request toggle via sendInput — host processes and broadcasts back
+        scene._clientRequestInfiniteHealthToggle = true;
+      } else {
+        // P1 (host) or solo: toggle directly and update UI
+        this.sceneManager.toggleInfiniteHealth();
+        var on = this.sceneManager.infiniteHealth;
+        infiniteHealthButton.value = on ? "Infinite Health: ON" : "Infinite Health: OFF";
+        infiniteHealthButton.style.background = on ? "#cc3300" : "";
+        infiniteHealthButton.style.color = on ? "#ffffff" : "";
+      }
     });
 
     var trainingGroundButton = document.getElementById("trainingGroundButton");
     trainingGroundButton.addEventListener('click', () => {
       this.sceneManager.startTrainingGroundScene();
     });
+
+    var bossBattleButton = document.getElementById("bossBattleButton");
+    bossBattleButton.style.display = 'none'; // only visible during an active MP session
+    bossBattleButton.addEventListener('click', () => {
+      var scene = this.sceneManager.currentScene;
+      if (!scene || !scene.multiplayerActive) return; // requires active MP session
+      var net = this.network;
+      if (net && net.isHost) {
+        // P1 (host): signal mode switch directly
+        if (scene.bossVsZerlin) {
+          scene._pendingTeamMode = true;
+        } else {
+          scene._pendingBossMode = true;
+        }
+      } else {
+        // P2 (client): flag for next sendInput() frame
+        scene._clientRequestModeSwitch = true;
+      }
+    });
+    this._bossBattleButton = bossBattleButton;
 
     var campaignButton = document.getElementById("campaignButton");
     campaignButton.addEventListener('click', () => {
@@ -391,10 +423,13 @@ class GameEngine {
         setTimeout(() => {
           closeUI();
           this.sceneManager.startMultiplayerTrainingScene();
+          this._bossBattleButton.style.display = '';
+          this._bossBattleButton.value = 'Versus Mode';
         }, 800);
       };
       this.network.onDisconnected = () => {
         document.getElementById('hostStatus').textContent = 'Partner disconnected.';
+        this._bossBattleButton.style.display = 'none';
       };
       this.network.onError = (err) => {
         document.getElementById('hostStatus').textContent = 'Error: ' + err.type;
@@ -421,8 +456,8 @@ class GameEngine {
 
     document.getElementById('connectBtn').addEventListener('click', () => {
       var code = document.getElementById('roomCodeInput').value.toUpperCase().trim();
-      if (code.length < 6) {
-        document.getElementById('joinStatus').textContent = 'Enter a 6-character code.';
+      if (code.length < 3) {
+        document.getElementById('joinStatus').textContent = 'Enter a 3-character code.';
         return;
       }
       document.getElementById('joinStatus').textContent = 'Connecting...';
@@ -432,10 +467,13 @@ class GameEngine {
         setTimeout(() => {
           closeUI();
           this.sceneManager.startMultiplayerTrainingScene();
+          this._bossBattleButton.style.display = '';
+          this._bossBattleButton.value = 'Versus Mode';
         }, 800);
       };
       this.network.onDisconnected = () => {
         document.getElementById('joinStatus').textContent = 'Disconnected.';
+        this._bossBattleButton.style.display = 'none';
       };
       this.network.onError = (err) => {
         var msg = err.type === 'peer-unavailable'

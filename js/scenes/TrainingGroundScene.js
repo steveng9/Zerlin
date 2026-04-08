@@ -11,10 +11,11 @@ Joshua Atherton, Michael Josten, Steven Golob
  * lives on SceneManager so the UI controls in GameEngine.js keep working.
  *
  * @param {SceneManager2} sm
- * @param {boolean} multiplayer  true when started via startMultiplayerTrainingScene()
+ * @param {boolean} multiplayer     true when started via startMultiplayerTrainingScene()
+ * @param {boolean} bossVsZerlin   true for local adversarial Boss Battle mode
  */
 class TrainingGroundScene {
-  constructor(sm, multiplayer) {
+  constructor(sm, multiplayer, bossVsZerlin) {
     this.sm = sm;
     this.game = sm.game;
 
@@ -47,8 +48,31 @@ class TrainingGroundScene {
       this.sceneEntities.push(new ParallaxSnowBackground(this.game, this.sm, 100));
     }
 
+    // ── Boss Battle state ────────────────────────────────────────────────
+    this.bossVsZerlin = !!bossVsZerlin;
+    this.playableBoss = null;
+
+    if (this.bossVsZerlin) {
+      // No droids in adversarial mode — empty pool prevents spawning
+      this.trainingDroidPool = [];
+      sm.level.unspawnedDroids = [];
+
+      // Spawn playable boss in upper-right area of the visible arena
+      var bossSpawnX = this.game.surfaceWidth * 0.68;
+      var bossSpawnY = 200;
+      this.playableBoss = new PlayableBoss(this.game, bossSpawnX, bossSpawnY);
+      this.playableBoss.infiniteHealth = sm.infiniteHealth;
+      sm.boss = this.playableBoss;
+
+      // Health bar in the top-right (same position as P2 Zerlin bars)
+      var barLength = this.game.surfaceWidth * Constants.StatusBarConstants.STATUS_BAR_LENGTH;
+      var bossBarX = this.game.surfaceWidth - barLength - 25;
+      sm.addEntity(new BossPlayerHealthBar(this.game, sm, bossBarX, 25, this.playableBoss));
+    }
+
     // ── Multiplayer state ────────────────────────────────────────────────
     this.multiplayerActive = multiplayer;
+    sm.multiplayerActive = multiplayer;  // expose on SceneManager for Camera + CollisionManager
     this.Zerlin2 = null;
     this.pendingSnapshot = null;
     this.lastP1State = null;
@@ -58,28 +82,41 @@ class TrainingGroundScene {
     this._mpRestartTimer = null;
     this._prevP1Space = false;
     this._prevP2Space = false;
+    // Mode-switch flags (boss ↔ team toggle)
+    this._pendingBossMode = false;
+    this._pendingTeamMode = false;
+    this._bossModeReadyToExecute = false;
+    this._teamModeReadyToExecute = false;
+    this._clientRequestModeSwitch = false;
+    // Infinite health sync: client sets this, host reads it in sendInput
+    this._clientRequestInfiniteHealthToggle = false;
+    this._prevInfiniteHealthToggle = false; // edge-trigger: only fire on false→true
 
     if (multiplayer) {
-      this.Zerlin2 = new Zerlin2(this.game, sm.camera, sm);
-      sm.Zerlin2 = this.Zerlin2;
-      this.Zerlin2.maxHealth = 15;
-      this.Zerlin2.maxForce  = 15;
-      this.Zerlin2.setHealth();
+      if (!this.bossVsZerlin) {
+        // Co-op mode: create Zerlin2 as P2's character
+        this.Zerlin2 = new Zerlin2(this.game, sm.camera, sm);
+        sm.Zerlin2 = this.Zerlin2;
+        this.Zerlin2.maxHealth = 15;
+        this.Zerlin2.maxForce  = 15;
+        this.Zerlin2.setHealth();
 
-      // Apply infinite health toggle to P2 as well
-      this.Zerlin2.infiniteHealth = sm.infiniteHealth;
-      // P2 saber color defaults to the client's game.saberHue (updated via input after connect)
-      this.Zerlin2.saberHue = this.game.saberHue || 240;
+        // Apply infinite health toggle to P2 as well
+        this.Zerlin2.infiniteHealth = sm.infiniteHealth;
+        // P2 saber color defaults to the client's game.saberHue (updated via input after connect)
+        this.Zerlin2.saberHue = this.game.saberHue || 240;
 
-      // Spawn P2 on the floor immediately instead of falling from y=0
-      this._snapToFloor(this.Zerlin2, sm.level.tiles);
+        // Spawn P2 on the floor immediately instead of falling from y=0
+        this._snapToFloor(this.Zerlin2, sm.level.tiles);
 
-      // P2 status bars — mirrored to top-right
-      var barLength = this.game.surfaceWidth * Constants.StatusBarConstants.STATUS_BAR_LENGTH;
-      var p2BarX = this.game.surfaceWidth - barLength - 25;
-      sm.addEntity(new HealthStatusBarP2(this.game, sm, p2BarX, 25));
-      sm.addEntity(new ForceStatusBarP2(this.game, sm, p2BarX, 50));
+        // P2 status bars — mirrored to top-right
+        var barLength = this.game.surfaceWidth * Constants.StatusBarConstants.STATUS_BAR_LENGTH;
+        var p2BarX = this.game.surfaceWidth - barLength - 25;
+        sm.addEntity(new HealthStatusBarP2(this.game, sm, p2BarX, 25));
+        sm.addEntity(new ForceStatusBarP2(this.game, sm, p2BarX, 50));
+      }
 
+      // Both co-op and boss-battle modes need state-received callback on client
       if (!this.game.network.isHost) {
         this.game.network.onStateReceived = (snap) => {
           this.pendingSnapshot = snap;
@@ -100,7 +137,7 @@ class TrainingGroundScene {
 
     if (!this.sm.paused) {
       // ── Player update ──────────────────────────────────────────────────
-      if (this.multiplayerActive && this.Zerlin2 && !this.game.network.isHost) {
+      if (this.multiplayerActive && !this.game.network.isHost) {
         // Client: run P1 with neutral input so physics work, then override from snapshot
         var _sk = this.game.keys; var _sm = this.game.mouse;
         var _sc = this.game.click; var _src = this.game.rightClickDown;
@@ -191,17 +228,53 @@ class TrainingGroundScene {
       }
 
       // Client: apply snapshot corrections after physics
-      if (this.multiplayerActive && this.Zerlin2 && !this.game.network.isHost && this.pendingSnapshot) {
-        if (this.pendingSnapshot.restartMultiplayer) {
+      if (this.multiplayerActive && !this.game.network.isHost && this.pendingSnapshot) {
+        var snap = this.pendingSnapshot;
+        this.pendingSnapshot = null;
+
+        if (snap.restartMultiplayer) {
           this.game.audio.endAllSoundFX();
           this.sm.startMultiplayerTrainingScene();
           return;
         }
-        this._applyPlayerFromSnapshot(this.sm.Zerlin,  this.pendingSnapshot.p1);
-        this._applyPlayerFromSnapshot(this.Zerlin2, this.pendingSnapshot.p2);
-        this._applyEntitySnapshot(this.pendingSnapshot);
-        if (this.pendingSnapshot.kills !== undefined) this.trainingKills = this.pendingSnapshot.kills;
-        this.pendingSnapshot = null;
+        if (snap.startBossMode) {
+          this.game.audio.endAllSoundFX();
+          this.sm.startBossVsZerlinMultiplayerScene();
+          return;
+        }
+        if (snap.startTeamMode) {
+          this.game.audio.endAllSoundFX();
+          this.sm.startMultiplayerTrainingScene();
+          return;
+        }
+
+        // Sync infinite health toggle from host
+        if (snap.infiniteHealth !== undefined && snap.infiniteHealth !== this.sm.infiniteHealth) {
+          this.sm.infiniteHealth = snap.infiniteHealth;
+          this.sm.Zerlin.infiniteHealth = snap.infiniteHealth;
+          this.sm.Zerlin.setHealth(); // update maxHealth (999999 vs real max); currentHealth overwritten below by snapshot
+          if (this.Zerlin2) {
+            this.Zerlin2.infiniteHealth = snap.infiniteHealth;
+            this.Zerlin2.setHealth();
+          }
+          if (this.playableBoss) this.playableBoss.infiniteHealth = snap.infiniteHealth;
+          var ihBtn = document.getElementById('infiniteHealth');
+          if (ihBtn) {
+            var on = snap.infiniteHealth;
+            ihBtn.value = on ? 'Infinite Health: ON' : 'Infinite Health: OFF';
+            ihBtn.style.background = on ? '#cc3300' : '';
+            ihBtn.style.color = on ? '#ffffff' : '';
+          }
+        }
+        this._applyPlayerFromSnapshot(this.sm.Zerlin, snap.p1);
+        if (this.Zerlin2 && snap.p2) {
+          this._applyPlayerFromSnapshot(this.Zerlin2, snap.p2);
+        }
+        if (this.bossVsZerlin && this.playableBoss && snap.boss) {
+          this._applyBossFromSnapshot(this.playableBoss, snap.boss);
+        }
+        this._applyEntitySnapshot(snap);
+        if (snap.kills !== undefined) this.trainingKills = snap.kills;
       }
 
       if (this.multiplayerActive && this.Zerlin2) {
@@ -215,8 +288,8 @@ class TrainingGroundScene {
       this.sm.camera.update();
       this.sm.level.update();
 
-      // ── Droid spawning (host-authoritative) ────────────────────────────
-      if (!this.multiplayerActive || this.game.network.isHost) {
+      // ── Droid spawning (host-authoritative, disabled in Boss Battle mode) ─
+      if (!this.bossVsZerlin && (!this.multiplayerActive || this.game.network.isHost)) {
         if (this.trainingDroidPool.length === 0 && this.sm.enabledDroidTypes.size > 0) {
           this.sm.level.set();
           this.trainingDroidPool = this.sm.level.unspawnedDroids.filter(
@@ -288,6 +361,11 @@ class TrainingGroundScene {
         }
       }
 
+      // ── Playable Boss update (Boss Battle mode only) ───────────────────
+      if (this.bossVsZerlin && this.playableBoss) {
+        this.playableBoss.update();
+      }
+
       this.sm.collisionManager.handleCollisions();
 
       // ── Camera shake on hit ────────────────────────────────────────────
@@ -310,13 +388,46 @@ class TrainingGroundScene {
       }
 
       // ── Networking ─────────────────────────────────────────────────────
-      if (this.multiplayerActive && this.Zerlin2) {
+      if (this.multiplayerActive) {
         if (this.game.network.isHost) {
+          // Check for mode-switch request from client
+          var hostInp = this.game.network.lastReceivedInput;
+          if (hostInp && hostInp.requestModeSwitch) {
+            if (this.bossVsZerlin) {
+              this._pendingTeamMode = true;
+            } else {
+              this._pendingBossMode = true;
+            }
+          }
+          var inpToggle = !!(hostInp && hostInp.requestInfiniteHealthToggle);
+          if (inpToggle && !this._prevInfiniteHealthToggle) {
+            this.sm.toggleInfiniteHealth();
+            // Update P1's button UI (P2 triggered this; P1's button wasn't clicked directly)
+            var ihBtn = document.getElementById('infiniteHealth');
+            if (ihBtn) {
+              var on = this.sm.infiniteHealth;
+              ihBtn.value = on ? 'Infinite Health: ON' : 'Infinite Health: OFF';
+              ihBtn.style.background = on ? '#cc3300' : '';
+              ihBtn.style.color = on ? '#ffffff' : '';
+            }
+          }
+          this._prevInfiniteHealthToggle = inpToggle;
+
           this.networkSnapshotTimer -= this.game.clockTick;
           if (this.networkSnapshotTimer <= 0) {
             this.networkSnapshotTimer = 1 / 20;
             this.game.network.sendGameState(this._buildPlayerSnapshot());
             if (this._mpRestartReadyToExecute) {
+              this.game.audio.endAllSoundFX();
+              this.sm.startMultiplayerTrainingScene();
+              return;
+            }
+            if (this._bossModeReadyToExecute) {
+              this.game.audio.endAllSoundFX();
+              this.sm.startBossVsZerlinMultiplayerScene();
+              return;
+            }
+            if (this._teamModeReadyToExecute) {
               this.game.audio.endAllSoundFX();
               this.sm.startMultiplayerTrainingScene();
               return;
@@ -330,7 +441,11 @@ class TrainingGroundScene {
             click:          !!this.game.click,
             rightClickDown: this.game.rightClickDown || false,
             saberHue:       this.Zerlin2 ? this.Zerlin2.saberHue : this.game.saberHue,
+            requestModeSwitch: this._clientRequestModeSwitch,
+            requestInfiniteHealthToggle: this._clientRequestInfiniteHealthToggle,
           });
+          this._clientRequestModeSwitch = false;
+          this._clientRequestInfiniteHealthToggle = false;
         }
       }
     }
@@ -342,7 +457,9 @@ class TrainingGroundScene {
 
     // ── Death / revive / restart logic ────────────────────────────────────
     if (this.multiplayerActive && this.Zerlin2) {
-      this._updateMultiplayerDeath();
+      this._updateMultiplayerDeath();  // co-op: Z1 + Z2
+    } else if (this.bossVsZerlin) {
+      this._updateBossVsZerlinDeath(); // boss battle (local or MP)
     } else {
       if (!this.startedFinalOverlay && !this.sm.Zerlin.alive) {
         this.sm.canPause = false;
@@ -382,6 +499,7 @@ class TrainingGroundScene {
     this.sm.level.drawEntityShadows(_shadowPlayers, this.sm.droids);
     this.sm.Zerlin.draw();
     if (this.multiplayerActive && this.Zerlin2) this.Zerlin2.draw();
+    if (this.bossVsZerlin && this.playableBoss) this.playableBoss.draw();
     for (var i = 0; i < this.sm.droids.length; i++) {
       this.sm.droids[i].draw();
     }
@@ -417,10 +535,32 @@ class TrainingGroundScene {
     this.game.ctx.textAlign = "left";
     this.game.ctx.font = '22px ' + smc.GAME_FONT;
     this.game.ctx.fillStyle = "rgba(255, 220, 0, 0.9)";
-    this.game.ctx.fillText(
-      "TRAINING GROUND  |  Kills: " + this.trainingKills +
-      "  |  Active: " + this.sm.droids.length,
-      25, 680);
+    if (this.bossVsZerlin) {
+      this.game.ctx.fillText(
+        "BOSS BATTLE  |  P1: WASD + Saber  |  P2 (Boss): WASD + Mouse Aim  Click = Beam  Space = Bomb",
+        25, 680);
+    } else {
+      this.game.ctx.fillText(
+        "TRAINING GROUND  |  Kills: " + this.trainingKills +
+        "  |  Active: " + this.sm.droids.length,
+        25, 680);
+    }
+  }
+
+  // ── Boss Battle death / respawn ───────────────────────────────────────────
+
+  _updateBossVsZerlinDeath() {
+    // In multiplayer, only the host drives respawns (client gets state from snapshot)
+    if (this.multiplayerActive && this.game.network && !this.game.network.isHost) return;
+
+    var Z1 = this.sm.Zerlin;
+    // Zerlin: respawn after death animation completes + a short pause
+    if (!Z1.alive && Z1.deathLanded &&
+        this.levelSceneTimer > Z1.timeOfDeath + Z1.deathAnimation.totalTime + 1.0) {
+      Z1.reset();
+      Z1.setHealth();
+    }
+    // PlayableBoss respawns itself via its own deadTimer in _doUpdate()
   }
 
   // ── Multiplayer death / revive ────────────────────────────────────────────
@@ -507,15 +647,31 @@ class TrainingGroundScene {
   _buildPlayerSnapshot() {
     var snap = {
       p1:       this._serializePlayer(this.sm.Zerlin),
-      p2:       this._serializePlayer(this.Zerlin2),
       kills:    this.trainingKills,
       droids:   this.sm.droids.map(d => this._serializeDroid(d)),
       lasers:   this.sm.lasers.map(l => this._serializeLaser(l)),
       powerups: this.sm.powerups.map(p => ({ type: p.constructor.name, x: p.x, startY: p.startY })),
     };
+    if (this.Zerlin2) {
+      snap.p2 = this._serializePlayer(this.Zerlin2);
+    }
+    if (this.bossVsZerlin && this.playableBoss) {
+      snap.boss = this._serializeBoss(this.playableBoss);
+    }
+    snap.infiniteHealth = this.sm.infiniteHealth;
     if (this._mpRestartPending) {
       snap.restartMultiplayer = true;
       this._mpRestartReadyToExecute = true;
+    }
+    if (this._pendingBossMode) {
+      snap.startBossMode = true;
+      this._bossModeReadyToExecute = true;
+      this._pendingBossMode = false;
+    }
+    if (this._pendingTeamMode) {
+      snap.startTeamMode = true;
+      this._teamModeReadyToExecute = true;
+      this._pendingTeamMode = false;
     }
     return snap;
   }
@@ -702,10 +858,73 @@ class TrainingGroundScene {
     if (state.reviveProgress !== undefined) zerlin.reviveProgress = state.reviveProgress;
     if (state.saberHue !== undefined) zerlin.saberHue = state.saberHue;
     if (state.alive && !zerlin.alive) zerlin.revive(state.health);
-    if (state.facingRight !== zerlin.facingRight) {
-      state.facingRight ? zerlin.faceRight() : zerlin.faceLeft();
-    } else {
-      zerlin.updateBoundingBox();
+    // Always use faceRight/faceLeft (never updateBoundingBox) so bounding box
+    // bottom is always y (not y-6), keeping lastBottom consistent for platform detection.
+    state.facingRight ? zerlin.faceRight() : zerlin.faceLeft();
+  }
+
+  _serializeBoss(boss) {
+    return {
+      x: boss.x, y: boss.y,
+      deltaX: boss.deltaX, deltaY: boss.deltaY,
+      health: boss.currentHealth,
+      alive: boss.alive,
+      falling: boss.falling,
+      facingRight: boss.facingRight,
+      shooting: boss.shooting,
+      beamAngle: boss.beamCannon.beamAngle,
+      bombs: boss.bombs.map(b => ({ x: b.x, y: b.y, deltaX: b.deltaX, deltaY: b.deltaY, bcx: b.boundingCircle.x, bcy: b.boundingCircle.y })),
+    };
+  }
+
+  _applyBossFromSnapshot(boss, state) {
+    if (!state) return;
+    boss.x = state.x;
+    boss.y = state.y;
+    boss.deltaX = state.deltaX;
+    boss.deltaY = state.deltaY;
+    boss.currentHealth = state.health;
+    boss.beamCannon.beamAngle = state.beamAngle;
+    // Always refresh bounding box consistently
+    state.facingRight ? boss.faceRight() : boss.faceLeft();
+
+    if (!state.alive && boss.alive) {
+      boss.die();
+    } else if (state.alive && !boss.alive) {
+      boss.respawn();
+    }
+    // Always sync falling directly — die()/respawn() set it correctly on first trigger,
+    // but direct sync prevents any frame where the animation lags behind the host.
+    if (state.falling !== undefined) boss.falling = state.falling;
+
+    // Sync beam state
+    if (state.shooting && !boss.shooting) {
+      boss.shoot();
+    } else if (!state.shooting && boss.shooting) {
+      if (boss.beamCannon.on) boss.beamCannon.turnOff();
+      boss.shooting = false;
+    }
+
+    // Sync bombs by index — trigger explosion locally when host removes a bomb
+    while (boss.bombs.length > state.bombs.length) {
+      var deadBomb = boss.bombs.pop();
+      deadBomb.explode();
+    }
+    for (var i = 0; i < state.bombs.length; i++) {
+      if (boss.bombs[i]) {
+        boss.bombs[i].x      = state.bombs[i].x;
+        boss.bombs[i].y      = state.bombs[i].y;
+        boss.bombs[i].deltaX = state.bombs[i].deltaX;
+        boss.bombs[i].deltaY = state.bombs[i].deltaY;
+        boss.bombs[i].boundingCircle.x = state.bombs[i].bcx;
+        boss.bombs[i].boundingCircle.y = state.bombs[i].bcy;
+      } else {
+        var nb = new Bomb(this.game, state.bombs[i].x, state.bombs[i].y,
+                          state.bombs[i].deltaX, state.bombs[i].deltaY);
+        nb.boundingCircle.x = state.bombs[i].bcx;
+        nb.boundingCircle.y = state.bombs[i].bcy;
+        boss.bombs.push(nb);
+      }
     }
   }
 
